@@ -72,6 +72,7 @@ function StudentWordBankRoute() {
 }
 
 const DevGreggCropEditor = import.meta.env.DEV ? lazy(() => import("./dev/GreggCropEditor")) : null;
+const DevGreggExercise6Pilot = import.meta.env.DEV ? lazy(() => import("./dev/GreggExercise6Pilot")) : null;
 
 export default function App() {
   return (
@@ -87,6 +88,9 @@ export default function App() {
       <Route path="/verify-email" element={<VerifyEmail />} />
 
       <Route path="/app/*" element={<ProtectedApp />}>
+        {import.meta.env.DEV && DevGreggExercise6Pilot && ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname) && (
+          <Route path="dev/gregg-exercise-6" element={<Suspense fallback={<div>Loading pilot...</div>}><DevGreggExercise6Pilot /></Suspense>} />
+        )}
         <Route index element={<DashboardRoute />} />
         <Route path="play" element={<Play />} />
         <Route path="lobby" element={<Lobby />} />

@@ -6,6 +6,8 @@ import { WaterEffects, WATER_TEXTURE_KEY } from "./game/WaterEffects";
 import { WordTarget } from "./game/WordTarget";
 import type { MatchConfig } from "../lib/mockData";
 import { getSoloGreggPrompts, isGreggStenographyCategory } from "../data/greggPrompts";
+import { isValidGreggCrop } from "../data/greggCropMappings";
+import { PENDING_GREGG_PILOT_MAPPINGS } from "../dev/greggPilotMappings";
 
 export type GameResult = {
   score: number;
@@ -85,6 +87,8 @@ export default class GameScene extends Phaser.Scene {
   private wordDeck: string[] = [];
   private wordDeckIndex = 0;
   private isSoloGregg = false;
+  private isGreggCropPilot = false;
+  private greggPilotExercise: number | null = null;
   private greggIndex = 0;
   private greggPlayTop = 144;
   private greggPlayBottom = 0;
@@ -123,7 +127,16 @@ export default class GameScene extends Phaser.Scene {
     this.matchDurationSeconds = matchConfig.roundTime;
     this.remainingSeconds = this.matchDurationSeconds;
     this.difficultyKey = this.getDifficultyKey(matchConfig.difficulty);
-    this.isSoloGregg = mode === "solo" && isGreggStenographyCategory(matchConfig.wordSet);
+    const selectedExercise = /^Gregg Exercise ([6-9]|10) Crop Pilot$/.exec(matchConfig.wordSet);
+    // Default on in local development; explicit false restores full-sentence comparison.
+    const studentCropPreview = import.meta.env.DEV
+      && import.meta.env.VITE_DEV_GREGG_CATEGORY_CROPS !== "false"
+      && isGreggStenographyCategory(matchConfig.wordSet);
+    this.isGreggCropPilot = import.meta.env.DEV && mode === "solo"
+      && ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
+      && (studentCropPreview || matchConfig.wordSet === "Gregg Exercises 6-10 Crop Pilot" || selectedExercise !== null);
+    this.greggPilotExercise = this.isGreggCropPilot && selectedExercise ? Number(selectedExercise[1]) : null;
+    this.isSoloGregg = mode === "solo" && (this.isGreggCropPilot || isGreggStenographyCategory(matchConfig.wordSet));
     this.greggIndex = 0;
     this.wordCategory = getWordCategory(matchConfig.wordSet);
     if (this.isSoloGregg) {
@@ -149,6 +162,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.isSoloGregg) {
       for (const prompt of getSoloGreggPrompts()) {
+        if (this.isGreggCropPilot && this.greggPilotExercise !== null && prompt.exerciseNumber !== this.greggPilotExercise) continue;
         const key = this.greggTextureKey(prompt.id);
         if (!this.textures.exists(key)) this.load.image(key, prompt.image);
       }
@@ -304,16 +318,36 @@ export default class GameScene extends Phaser.Scene {
 
   private spawnWord(): void {
     if (this.isSoloGregg) {
-      const prompts = getSoloGreggPrompts();
-      if (!prompts.length || prompts.some((prompt) => !this.textures.exists(this.greggTextureKey(prompt.id)))) {
+      const prompts = this.greggTargets();
+      if (!prompts.length || prompts.some((prompt) => !this.textures.exists(this.greggTextureKey(prompt.textureId)))) {
         this.showGreggUnavailable("Gregg shorthand content could not be loaded. Please restart or exit.");
         return;
+      }
+      if (this.isGreggCropPilot) {
+        const expectedCounts: Record<number, number> = { 6: 8, 7: 9, 8: 8, 9: 8, 10: 9 };
+        const ids = new Set<string>();
+        const orders = new Map<number, number>();
+        const selectedCounts = this.greggPilotExercise === null ? expectedCounts
+          : { [this.greggPilotExercise]: expectedCounts[this.greggPilotExercise] };
+        const expectedTotal = Object.values(selectedCounts).reduce((sum, count) => sum + count, 0);
+        if (prompts.length !== expectedTotal || prompts.some((prompt) => {
+          const source = this.textures.get(this.greggTextureKey(prompt.textureId)).getSourceImage();
+          const order = (orders.get(prompt.exerciseNumber) ?? 0) + 1;
+          orders.set(prompt.exerciseNumber, order);
+          const invalid = ids.has(prompt.id) || !prompt.answer.trim() || !prompt.crop
+            || prompt.sequenceOrder !== order || !isValidGreggCrop(prompt.crop, source.width, source.height);
+          ids.add(prompt.id);
+          return invalid;
+        }) || Object.entries(selectedCounts).some(([exercise, count]) => orders.get(Number(exercise)) !== count)) {
+          this.showGreggUnavailable("Gregg pilot crop data is unavailable or invalid.");
+          return;
+        }
       }
       const prompt = prompts[this.greggIndex % prompts.length];
       this.greggIndex += 1;
       this.activeWord = prompt.answer;
       this.typedText = "";
-      this.typedDisplay.setText("").setColor("#ffff00");
+      this.typedDisplay.setText(this.greggInputText("")).setColor("#ffff00");
       this.layoutGreggTarget(true);
       return;
     }
@@ -379,6 +413,17 @@ export default class GameScene extends Phaser.Scene {
     return `solo-gregg-${id}`;
   }
 
+  private greggTargets() {
+    if (import.meta.env.DEV && this.isGreggCropPilot) {
+      return [...PENDING_GREGG_PILOT_MAPPINGS]
+        .filter((item) => this.greggPilotExercise === null || item.exerciseNumber === this.greggPilotExercise)
+        .sort((a, b) => a.exerciseNumber - b.exerciseNumber || a.sequenceOrder - b.sequenceOrder)
+        .map((item) => ({ ...item, textureId: `steno-${item.exerciseNumber}` }));
+    }
+    return getSoloGreggPrompts().map((item) => ({ ...item, textureId: item.id,
+      crop: undefined, sequenceOrder: undefined }));
+  }
+
   private showGreggUnavailable(message: string): void {
     this.gameOver = true;
     this.wordTarget.hide();
@@ -391,19 +436,26 @@ export default class GameScene extends Phaser.Scene {
     const currentText = this.typedText;
     this.typedDisplay.setFontSize(this.scale.width < 480 ? 14 : 18)
       .setWordWrapWidth(width, true).setOrigin(0.5, 0);
+    if (this.isGreggCropPilot) this.typedDisplay.setBackgroundColor("#102441");
     // Reserve enough space for any sentence so the falling boundary does not move while typing.
     let maxHeight = 0;
-    for (const prompt of getSoloGreggPrompts()) {
-      this.typedDisplay.setText(prompt.answer);
+    for (const prompt of this.greggTargets()) {
+      this.typedDisplay.setText(this.greggInputText(prompt.answer));
       maxHeight = Math.max(maxHeight, this.typedDisplay.height);
     }
     const inputTop = this.scale.height - maxHeight - 16;
-    this.typedDisplay.setText(currentText).setPosition(this.scale.width / 2, inputTop);
+    this.typedDisplay.setText(this.greggInputText(currentText)).setPosition(this.scale.width / 2, inputTop);
     this.greggPlayBottom = inputTop - 16;
   }
 
+  private greggInputText(text: string): string {
+    return this.isGreggCropPilot ? `Type: ${text || "…"}` : text;
+  }
+
   private layoutGreggTarget(resetPosition: boolean): void {
-    const prompt = getSoloGreggPrompts().find((item) => item.answer === this.activeWord);
+    const prompts = this.greggTargets();
+    const prompt = this.isGreggCropPilot ? prompts[(this.greggIndex - 1) % prompts.length]
+      : prompts.find((item) => item.answer === this.activeWord);
     if (!prompt) return;
     const availableHeight = this.greggPlayBottom - this.greggPlayTop;
     if (availableHeight < 160 || this.scale.width < 240) {
@@ -411,11 +463,22 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
     this.wordX = this.scale.width / 2;
-    const fits = this.wordTarget.setSoloGreggImage(this.greggTextureKey(prompt.id), prompt.answer,
-      this.wordX, this.wordY, Math.min(350, this.scale.width - 32), Math.min(260, availableHeight * 0.65));
+    const textureKey = this.greggTextureKey(prompt.textureId);
+    const width = Math.min(350, this.scale.width - 32);
+    const maxHeight = Math.min(260, availableHeight * 0.65);
+    const fits = this.isGreggCropPilot && prompt.crop
+      ? this.wordTarget.setSoloGreggCrop(textureKey, prompt.answer, prompt.crop, this.wordX, this.wordY, width, maxHeight)
+      : this.wordTarget.setSoloGreggImage(textureKey, prompt.answer, this.wordX, this.wordY, width, maxHeight);
     if (!fits) {
       this.showGreggUnavailable("The game area is too small for Gregg exercises. Enlarge it and restart.");
       return;
+    }
+    if (this.isGreggCropPilot) {
+      if (resetPosition) this.lastLane = pickLaneNotSame(this.lastLane);
+      // Use rendered content width, including border clearance and the 3px shadow.
+      const halfWidth = this.wordTarget.width / 2;
+      this.wordX = Phaser.Math.Clamp(getLaneX(this.scale.width, this.lastLane),
+        16 + halfWidth, this.scale.width - 19 - halfWidth);
     }
     const top = this.greggPlayTop + this.wordTarget.height / 2;
     const bottom = this.greggPlayBottom - this.wordTarget.height / 2;
@@ -433,7 +496,7 @@ export default class GameScene extends Phaser.Scene {
     if (key === "Backspace") {
       if (this.typedText.length > 0) {
         this.typedText = this.typedText.slice(0, -1);
-        this.typedDisplay.setText(this.typedText);
+        this.typedDisplay.setText(this.greggInputText(this.typedText));
         this.refreshWordSplit();
       }
       return;
@@ -459,7 +522,7 @@ export default class GameScene extends Phaser.Scene {
     this.waterEffects.shoot(this.typedDisplay.x, this.typedDisplay.y - 8, this.wordX, this.wordY);
 
     this.typedText += key;
-    this.typedDisplay.setText(this.typedText);
+    this.typedDisplay.setText(this.greggInputText(this.typedText));
 
     if (this.activeWord.toLowerCase().startsWith(this.typedText.toLowerCase())) {
       this.correctKeystrokes += 1;
@@ -497,7 +560,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.isSoloGregg) {
       this.typedText = this.typedText.slice(0, -1);
-      this.typedDisplay.setText(this.typedText).setColor("#ff665f");
+      this.typedDisplay.setText(this.greggInputText(this.typedText)).setColor("#ff665f");
       return;
     }
 

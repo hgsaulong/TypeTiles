@@ -18,6 +18,7 @@ export class WordTarget {
   private readonly wordTextTyped: Phaser.GameObjects.Text;
   private readonly wordTextRemaining: Phaser.GameObjects.Text;
   private wordImage?: Phaser.GameObjects.Image;
+  private cropBackground?: Phaser.GameObjects.Rectangle;
   private isImagePrompt = false;
   private greggReference?: Phaser.GameObjects.Text;
   private greggImageOffset = 0;
@@ -62,6 +63,7 @@ export class WordTarget {
     this.activeWord = word;
     this.isImagePrompt = false;
     this.wordImage?.setVisible(false);
+    this.cropBackground?.setVisible(false);
     this.greggReference?.setVisible(false);
 
     this.wordTextTyped.setText("");
@@ -81,6 +83,7 @@ export class WordTarget {
   }
 
   setGreggImage(textureKey: string, answer: string, x: number, y: number, frameName?: string): void {
+    this.cropBackground?.setVisible(false);
     this.greggReference?.setVisible(false);
     this.activeWord = answer;
     this.isImagePrompt = true;
@@ -131,7 +134,7 @@ export class WordTarget {
     return true;
   }
 
-  // Foundation only: no gameplay path calls this until answer mappings are verified.
+  // Compact crop layout, currently used only by the development pilot.
   setSoloGreggCrop(textureKey: string, answer: string, crop: GreggCropRectangle,
     x: number, y: number, width: number, maxHeight: number): boolean {
     if (!this.scene.textures.exists(textureKey)) return false;
@@ -143,13 +146,41 @@ export class WordTarget {
     const frameName = `gregg-crop-${crop.x}-${crop.y}-${crop.width}-${crop.height}`;
     if (!texture.has(frameName)
       && !texture.add(frameName, 0, crop.x, crop.y, crop.width, crop.height)) return false;
-    return this.setSoloGreggImage(textureKey, answer, x, y, width, maxHeight, frameName);
+    this.setGreggImage(textureKey, answer, x, y, frameName);
+    if (!this.greggReference) {
+      this.greggReference = this.scene.add.text(0, 0, "", {
+        fontFamily: "Arial", fontSize: "14px", color: "#dcecff", align: "center",
+      }).setOrigin(0.5, 0).setDepth(3);
+    }
+    const padding = 6;
+    const gap = 4;
+    const contentWidth = Math.min(130, width - padding * 2);
+    if (!Number.isFinite(contentWidth) || contentWidth <= 0) return false;
+    this.greggReference.setFontSize(14).setWordWrapWidth(contentWidth, true).setText(answer).setVisible(true);
+    const imageHeight = Math.min(75, maxHeight - this.greggReference.height - padding * 2 - gap);
+    if (!Number.isFinite(imageHeight) || imageHeight <= 0) return false;
+    const scale = Math.min(1, contentWidth / crop.width, imageHeight / crop.height);
+    const image = this.wordImage!;
+    image.setScale(scale);
+    const tileWidth = Math.max(image.displayWidth, this.greggReference.width) + padding * 2;
+    const tileHeight = image.displayHeight + this.greggReference.height + padding * 2 + gap;
+    this.wordBlock.setSize(tileWidth, tileHeight);
+    this.wordShadow.setSize(tileWidth, tileHeight);
+    this.greggImageOffset = -tileHeight / 2 + padding + image.displayHeight / 2;
+    this.greggReferenceOffset = -tileHeight / 2 + padding + image.displayHeight + gap;
+    if (!this.cropBackground) {
+      this.cropBackground = this.scene.add.rectangle(0, 0, 1, 1, 0xffffff).setDepth(2.5);
+    }
+    this.cropBackground.setSize(image.displayWidth, image.displayHeight).setVisible(true);
+    this.setPosition(x, y);
+    return true;
   }
 
   hide(): void {
     this.wordBlock.setVisible(false);
     this.wordShadow.setVisible(false);
     this.wordImage?.setVisible(false);
+    this.cropBackground?.setVisible(false);
     this.greggReference?.setVisible(false);
     this.wordTextTyped.setVisible(false);
     this.wordTextRemaining.setVisible(false);
@@ -157,6 +188,10 @@ export class WordTarget {
 
   get height(): number {
     return this.wordBlock.height;
+  }
+
+  get width(): number {
+    return this.wordBlock.width;
   }
 
   setTypedText(typedText: string): void {
@@ -188,6 +223,7 @@ export class WordTarget {
     this.wordImage?.setPosition(snappedX, snappedY);
     if (this.greggReference?.visible) {
       this.wordImage?.setPosition(snappedX, snappedY + this.greggImageOffset);
+      this.cropBackground?.setPosition(snappedX, snappedY + this.greggImageOffset);
       this.greggReference.setPosition(snappedX, snappedY + this.greggReferenceOffset);
     }
     this.layoutWordParts(snappedX, snappedY);

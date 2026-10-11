@@ -1,0 +1,106 @@
+[
+  {
+    "id": "steno-6-crop-a7d7fab7-54e0-4744-9ad6-7b836d0a41f7",
+    "exerciseNumber": 6,
+    "answer": "In",
+    "crop": {
+      "x": 22,
+      "y": 156,
+      "width": 196,
+      "height": 121
+    },
+    "sequenceOrder": 1,
+    "verification": "pending"
+  },
+  {
+    "id": "steno-6-crop-76bcab08-f416-41cd-b297-f5e74c131207",
+    "exerciseNumber": 6,
+    "answer": "Only",
+    "crop": {
+      "x": 198,
+      "y": 159,
+      "width": 195,
+      "height": 151
+    },
+    "sequenceOrder": 2,
+    "verification": "pending"
+  },
+  {
+    "id": "steno-6-crop-1c61e4c9-5ee0-491b-abc7-0772e2f5c5c1",
+    "exerciseNumber": 6,
+    "answer": "Three",
+    "crop": {
+      "x": 400,
+      "y": 115,
+      "width": 144,
+      "height": 170
+    },
+    "sequenceOrder": 3,
+    "verification": "pending"
+  },
+  {
+    "id": "steno-6-crop-bdaf35fd-c37b-4d10-8dad-fec9d0d1fa87",
+    "exerciseNumber": 6,
+    "answer": "Weeks",
+    "crop": {
+      "x": 544,
+      "y": 155,
+      "width": 177,
+      "height": 173
+    },
+    "sequenceOrder": 4,
+    "verification": "pending"
+  },
+  {
+    "id": "steno-6-crop-f6987420-2691-40f5-89d7-c6c91418c946",
+    "exerciseNumber": 6,
+    "answer": "We",
+    "crop": {
+      "x": 746,
+      "y": 162,
+      "width": 314,
+      "height": 130
+    },
+    "sequenceOrder": 5,
+    "verification": "pending"
+  },
+  {
+    "id": "steno-6-crop-8415f930-1972-43b6-a390-35b5cc84065c",
+    "exerciseNumber": 6,
+    "answer": "Will",
+    "crop": {
+      "x": 1067,
+      "y": 4,
+      "width": 335,
+      "height": 299
+    },
+    "sequenceOrder": 6,
+    "verification": "pending"
+  },
+  {
+    "id": "steno-6-crop-93946cd8-6eb5-464d-a4ec-b136c3b84632",
+    "exerciseNumber": 6,
+    "answer": "Begin",
+    "crop": {
+      "x": 1402,
+      "y": 87,
+      "width": 408,
+      "height": 212
+    },
+    "sequenceOrder": 7,
+    "verification": "pending"
+  },
+  {
+    "id": "steno-6-crop-e84e4fa3-44b8-4052-81f2-8647a85af6df",
+    "exerciseNumber": 6,
+    "answer": "Meeting Daily",
+    "crop": {
+      "x": 1813,
+      "y": 43,
+      "width": 328,
+      "height": 271
+    },
+    "sequenceOrder": 8,
+    "verification": "pending"
+  }
+]
