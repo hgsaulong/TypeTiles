@@ -325,7 +325,8 @@ export default class GameScene extends Phaser.Scene {
         return;
       }
       if (this.isGreggCropPilot) {
-        const expectedCounts: Record<number, number> = { 6: 8, 7: 9, 8: 8, 9: 8, 10: 9 };
+        // Playable counts; the stored Exercise 7 punctuation record is excluded.
+        const expectedCounts: Record<number, number> = { 6: 8, 7: 8, 8: 8, 9: 8, 10: 9 };
         const ids = new Set<string>();
         const orders = new Map<number, number>();
         const selectedCounts = this.greggPilotExercise === null ? expectedCounts
@@ -417,6 +418,7 @@ export default class GameScene extends Phaser.Scene {
   private greggTargets() {
     if (import.meta.env.DEV && this.isGreggCropPilot) {
       return [...PENDING_GREGG_PILOT_MAPPINGS]
+        .filter((item) => !("playable" in item && item.playable === false))
         .filter((item) => this.greggPilotExercise === null || item.exerciseNumber === this.greggPilotExercise)
         .sort((a, b) => a.exerciseNumber - b.exerciseNumber || a.sequenceOrder - b.sequenceOrder)
         .map((item) => ({ ...item, textureId: `steno-${item.exerciseNumber}` }));

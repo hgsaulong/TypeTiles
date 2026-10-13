@@ -14,6 +14,8 @@ export type GreggCropMapping = {
   readonly crop: GreggCropRectangle;
   readonly sequenceOrder: number;
   readonly verification: "pending" | "verified";
+  // Keep reference-only punctuation records without making them typing targets.
+  readonly playable?: boolean;
 };
 
 // No word/phrase outlines have been verified. Geometry alone does not verify an answer.
