@@ -27,6 +27,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const { logout, user } = usePlayerAuth();
   const isMatchFlow = location.pathname === "/app/pre-match" || location.pathname === "/app/game";
+  const isResultsPage = location.pathname === "/app/results";
 
   const handleLogout = () => {
     logout();
@@ -36,7 +37,7 @@ export function AppShell() {
   return (
     <div className="relative h-screen overflow-hidden text-slate-100">
       <HudBackground />
-      <div className="mx-auto flex h-full min-h-0 max-w-[1600px] gap-4 p-4 lg:gap-0 lg:p-0">
+      <div className={`mx-auto flex h-full min-h-0 max-w-[1600px] gap-4 ${isMatchFlow ? "p-0" : "p-4"} lg:gap-0 lg:p-0`}>
         {!isMatchFlow ? <aside
           className={`fixed inset-y-4 left-4 z-40 w-[17rem] overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#141a3a]/95 p-5 shadow-[0_28px_60px_rgba(4,8,25,0.55)] backdrop-blur-xl transition-transform duration-300 lg:static lg:inset-y-0 lg:left-0 lg:w-[269px] lg:translate-x-0 lg:rounded-none lg:border-0 lg:border-r lg:border-white/30 lg:bg-transparent lg:p-[26px_19px_0_26px] lg:shadow-none lg:backdrop-blur-none ${open ? "translate-x-0" : "-translate-x-[115%] lg:translate-x-0"}`}
         >
@@ -92,7 +93,7 @@ export function AppShell() {
           </div>
         </aside> : null}
 
-        <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${isMatchFlow ? "" : "lg:pl-[54px] lg:pr-[48px]"}`}>
+        <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${isMatchFlow ? "" : isResultsPage ? "lg:pl-4 lg:pr-4" : "lg:pl-[54px] lg:pr-[48px]"}`}>
           {!isMatchFlow ? <header className="mb-4 flex items-center justify-between rounded-2xl border border-white/10 bg-[#141a3a]/90 px-4 py-3 shadow-[0_24px_50px_rgba(4,8,25,0.35)] backdrop-blur-xl lg:hidden">
             <button
               type="button"

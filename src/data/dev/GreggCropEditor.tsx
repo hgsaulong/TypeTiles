@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { STENO_EXERCISES } from "../data/stenoExercises";
-import { isValidGreggCrop, type GreggCropMapping, type GreggCropRectangle } from "../data/greggCropMappings";
+import { STENO_EXERCISES } from "../stenoExercises";
+import { isValidGreggCrop, type GreggCropMapping, type GreggCropRectangle } from "../greggCropMappings";
 import { exportPendingMappings, rectangleBetween, sourcePoint, type ImageSize, type PixelPoint } from "./greggCropEditorUtils";
 
 const field = "rounded border border-blue-400/60 bg-slate-900 px-3 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300";

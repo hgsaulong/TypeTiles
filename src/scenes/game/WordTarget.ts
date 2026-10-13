@@ -66,9 +66,10 @@ export class WordTarget {
     this.cropBackground?.setVisible(false);
     this.greggReference?.setVisible(false);
 
-    this.wordTextTyped.setText("");
+    const fontSize = word.length > 56 ? 14 : word.length > 40 ? 17 : word.length > 28 ? 19 : 22;
+    this.wordTextTyped.setFontSize(fontSize).setText("");
+    this.wordTextRemaining.setFontSize(fontSize).setVisible(true);
     this.wordTextTyped.setVisible(true);
-    this.wordTextRemaining.setVisible(true);
     this.wordTextRemaining.setText(word);
 
     const textWidth = this.wordTextRemaining.width;

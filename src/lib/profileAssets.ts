@@ -26,7 +26,10 @@ export const PROFILE_BACKGROUNDS = {
 export type ProfileAvatarId = keyof typeof PROFILE_AVATARS;
 export type ProfileBackgroundId = keyof typeof PROFILE_BACKGROUNDS;
 
-export function getProfileAvatar(value: string | undefined) {
+export function getProfileAvatar(value: string | undefined): { source: string; label: string } {
+  if (value?.startsWith("data:image/")) {
+    return { source: value, label: "Custom avatar" };
+  }
   return PROFILE_AVATARS[value as ProfileAvatarId] ?? PROFILE_AVATARS.hani;
 }
 

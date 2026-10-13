@@ -4,7 +4,7 @@ import { mockMatchConfig, type GreggSubmode } from "../lib/mockData";
 import { resolveGreggSubmode } from "../lib/greggGameplay";
 import { GreggModeSelector } from "../components/GreggModeSelector";
 
-const categories = ["Corporate", "Communication", "Records", "Accounting", "Technology", "General", "Stenography"] as const;
+const categories = ["Corporate", "Communication", "Records", "Accounting", "Technology", "General", "Stenography", "Medical", "Legal"] as const;
 const difficulties = ["Easy", "Normal", "Hard"] as const;
 const roundTimes = [30, 60, 90] as const;
 

@@ -35,7 +35,43 @@ export type MatchHistoryRow = {
   score: number;
   wpm: number;
   accuracy: number;
+  error_rate: number;
+  completed_words: number;
+  end_reason: "time" | "health" | null;
+  remaining_lives: number;
   position: number | null;
+};
+
+export type TeacherSession = {
+  id: number;
+  mode: string;
+  difficulty: string;
+  round_time: number;
+  word_set: string;
+  status: string;
+  created_at: string;
+  participant_count: number;
+};
+
+export type TeacherParticipant = {
+  user_id: number;
+  display_name: string;
+  username: string;
+  avatar?: string;
+  score: number;
+  wpm: number;
+  accuracy: number;
+  error_rate: number;
+  completed_words: number;
+  end_reason: "time" | "health" | null;
+  remaining_lives: number;
+  position: number | null;
+  participant_status: string;
+};
+
+export type TeacherMatchDetails = {
+  match: TeacherSession;
+  participants: TeacherParticipant[];
 };
 
 export type LeaderboardRow = {
@@ -68,7 +104,11 @@ export type SubmitMatchResultInput = {
   score: number;
   wpm: number;
   accuracy: number;
-};
+  errorRate: number;
+  completedWords: number;
+  endReason: "time" | "health";
+  remainingLives: number;
+}
 
 type AuthResponse = {
   token: string;
@@ -188,6 +228,14 @@ export function getPlayerHistory(): Promise<{ history: MatchHistoryRow[] }> {
 
 export function getPlayerRank(): Promise<{ rank: number; stats: PlayerStats }> {
   return authenticatedRequest<{ rank: number; stats: PlayerStats }>("/users/me/rank");
+}
+
+export function getTeacherSessions(): Promise<{ sessions: TeacherSession[] }> {
+  return authenticatedRequest<{ sessions: TeacherSession[] }>("/teacher/matches");
+}
+
+export function getTeacherMatchDetails(matchId: number): Promise<TeacherMatchDetails> {
+  return authenticatedRequest<TeacherMatchDetails>(`/teacher/matches/${matchId}`);
 }
 
 export function getLeaderboard(tier?: string): Promise<{ leaderboard: LeaderboardRow[]; tier?: string }> {

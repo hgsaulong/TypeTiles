@@ -1,5 +1,13 @@
 import Phaser from "phaser";
-import { getGreggPrompt, getWordCategory, getWordsForDifficulty, GREGG_PROMPTS, WORD_BANK, type WordCategory } from "../words";
+import {
+  getGreggPrompt,
+  getSentencesForCategory,
+  getWordCategory,
+  getWordsForDifficulty,
+  GREGG_PROMPTS,
+  WORD_BANK,
+  type WordCategory,
+} from "../words";
 import { PauseMenu } from "./game/PauseMenu";
 import { getLaneX, pickLaneNotSame, type Lane } from "./game/lanes";
 import { WaterEffects, WATER_TEXTURE_KEY } from "./game/WaterEffects";
@@ -88,6 +96,7 @@ export default class GameScene extends Phaser.Scene {
   private multiplayerWordIndex = 0;
   private wordDeck: string[] = [];
   private wordDeckIndex = 0;
+  private isSentenceMode = false;
   private isSoloGregg = false;
   private isGreggCropPilot = false;
   private greggPilotExercise: number | null = null;
@@ -137,6 +146,9 @@ export default class GameScene extends Phaser.Scene {
       && (studentCropPreview || matchConfig.wordSet === "Gregg Exercises 6-10 Crop Pilot" || selectedExercise !== null);
     this.greggPilotExercise = this.isGreggCropPilot && selectedExercise ? Number(selectedExercise[1]) : null;
     this.isSoloGregg = mode === "solo" && (this.isGreggCropPilot || isGreggStenographyCategory(matchConfig.wordSet));
+    this.isSentenceMode = mode === "solo"
+      && !isGreggStenographyCategory(matchConfig.wordSet)
+      && matchConfig.greggSubmode === "full-sentence";
     this.greggIndex = 0;
     this.wordCategory = getWordCategory(matchConfig.wordSet);
     if (this.isSoloGregg) {
@@ -146,12 +158,17 @@ export default class GameScene extends Phaser.Scene {
         * (this.isGreggCropPilot ? 1 : FULL_SENTENCE_SPEED_MULTIPLIER);
       return;
     }
-    const preferredWords = [...new Set(getWordsForDifficulty(this.wordCategory, this.difficultyKey))];
-    const preferredWordSet = new Set(preferredWords);
-    const remainingCategoryWords = WORD_BANK[this.wordCategory].filter((word) => !preferredWordSet.has(word));
-    this.wordDeck = [...this.shuffleWords(preferredWords), ...this.shuffleWords(remainingCategoryWords)];
+    if (this.isSentenceMode) {
+      this.wordDeck = this.shuffleWords([...getSentencesForCategory(this.wordCategory)]);
+    } else {
+      const preferredWords = [...new Set(getWordsForDifficulty(this.wordCategory, this.difficultyKey))];
+      const preferredWordSet = new Set(preferredWords);
+      const remainingCategoryWords = WORD_BANK[this.wordCategory].filter((word) => !preferredWordSet.has(word));
+      this.wordDeck = [...this.shuffleWords(preferredWords), ...this.shuffleWords(remainingCategoryWords)];
+    }
     this.wordDeckIndex = 0;
-    this.fallSpeedPxPerSec = GameScene.DIFFICULTY_CONFIG[this.difficultyKey].fallSpeed;
+    this.fallSpeedPxPerSec = GameScene.DIFFICULTY_CONFIG[this.difficultyKey].fallSpeed
+      * (this.isSentenceMode ? FULL_SENTENCE_SPEED_MULTIPLIER : 1);
   }
 
   preload(): void {
@@ -685,7 +702,9 @@ export default class GameScene extends Phaser.Scene {
       difficulty: this.matchConfig.difficulty,
       roundTime: this.matchConfig.roundTime,
       wordSet: this.matchConfig.wordSet,
-      ...(this.isSoloGregg ? { greggSubmode: this.isGreggCropPilot ? "word-phrase" as const : "full-sentence" as const } : {}),
+      ...((this.isSoloGregg || this.isSentenceMode) && this.matchConfig.greggSubmode
+        ? { greggSubmode: this.matchConfig.greggSubmode }
+        : {}),
     });
 
     const completionMessage = this.gameMode === "multiplayer" ? "\nWaiting for other players..." : "";

@@ -93,7 +93,7 @@ export function GameMount({ mode = "solo", roomCode, matchConfig, backgroundImag
 
   return (
     <div
-      className="relative min-h-0 flex-1 overflow-hidden rounded-[2rem] border border-white/10 bg-black/30 bg-cover bg-center"
+      className="relative min-h-0 flex-1 overflow-hidden bg-black/30 bg-cover bg-center"
       style={backgroundImage ? { backgroundImage: `linear-gradient(rgba(25, 48, 91, 0.12), rgba(12, 25, 56, 0.18)), url("${backgroundImage}")` } : undefined}
     >
       <div

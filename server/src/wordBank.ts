@@ -1,4 +1,4 @@
-export type WordCategory = "corporate" | "communication" | "records" | "accounting" | "technology" | "general" | "stenography";
+export type WordCategory = "corporate" | "communication" | "records" | "accounting" | "technology" | "general" | "stenography" | "medical" | "legal";
 
 export type GreggPrompt = {
   id: string;
@@ -57,6 +57,22 @@ general: [
 ],
 
 stenography: [],
+
+medical: [
+  "doctor", "nurse", "patient", "clinic", "hospital", "health", "medicine", "symptom", "diagnosis", "treatment", "surgery", "therapy",
+  "disease", "infection", "vaccine", "allergy", "fever", "cough", "wound", "injury", "fracture", "bandage", "heartbeat", "pulse",
+  "blood", "oxygen", "breathing", "recovery", "prescription", "pharmacy", "emergency", "ambulance", "examination", "laboratory", "specimen", "radiology",
+  "anatomy", "skeleton", "muscle", "tissue", "organ", "nutrition", "diabetes", "migraine", "anesthesia", "surgeon", "pediatric", "chronic",
+  "wellness", "prevention"
+],
+
+legal: [
+  "lawyer", "judge", "court", "justice", "legal", "law", "case", "trial", "verdict", "witness", "evidence", "testimony",
+  "defendant", "plaintiff", "attorney", "lawsuit", "appeal", "hearing", "sentence", "bail", "contract", "agreement", "clause", "document",
+  "affidavit", "notary", "notarize", "signature", "complaint", "petition", "motion", "statute", "regulation", "legislation", "constitution", "rights",
+  "liability", "property", "ownership", "inheritance", "probate", "custody", "divorce", "mediation", "arbitration", "prosecution", "defense", "jurisdiction",
+  "settlement", "judgment"
+],
 };
 
 // Verified Gregg shorthand assets and prompt mappings must be supplied before gameplay is enabled.
@@ -71,6 +87,8 @@ export function getWordCategory(value: string): WordCategory {
   if (normalized === "records") return "records";
   if (normalized === "accounting") return "accounting";
   if (normalized === "technology") return "technology";
+  if (normalized === "medical") return "medical";
+  if (normalized === "legal") return "legal";
   if (normalized === "steno " || normalized === "greggshorthand") return "stenography";
   return "general";
 }
