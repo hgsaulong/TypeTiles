@@ -122,7 +122,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-7-crop-fb58968c-498c-47a0-b784-718bfa75363b",
     "exerciseNumber": 7,
-    "answer": "YOu",
+    "answer": "You",
     "crop": {
       "x": 310,
       "y": 115,
@@ -317,7 +317,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-8-crop-294ca543-9a81-4480-841d-13345f3d88a4",
     "exerciseNumber": 8,
-    "answer": "Releived",
+    "answer": "Relieved",
     "crop": {
       "x": 1647,
       "y": 61,
