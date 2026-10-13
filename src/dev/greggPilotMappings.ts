@@ -57,7 +57,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-6-crop-f6987420-2691-40f5-89d7-c6c91418c946",
     "exerciseNumber": 6,
-    "answer": "We",
+    "answer": "We will",
     "crop": {
       "x": 746,
       "y": 162,
@@ -70,7 +70,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-6-crop-8415f930-1972-43b6-a390-35b5cc84065c",
     "exerciseNumber": 6,
-    "answer": "Will",
+    "answer": "Begin",
     "crop": {
       "x": 1067,
       "y": 4,
@@ -83,7 +83,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-6-crop-93946cd8-6eb5-464d-a4ec-b136c3b84632",
     "exerciseNumber": 6,
-    "answer": "Begin",
+    "answer": "Meeting",
     "crop": {
       "x": 1402,
       "y": 87,
@@ -96,7 +96,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-6-crop-e84e4fa3-44b8-4052-81f2-8647a85af6df",
     "exerciseNumber": 6,
-    "answer": "Meeting Daily",
+    "answer": "Daily",
     "crop": {
       "x": 1813,
       "y": 43,
@@ -109,7 +109,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-7-crop-59428268-9bbc-4a55-a29a-42e35f096afd",
     "exerciseNumber": 7,
-    "answer": "If you",
+    "answer": "If you are",
     "crop": {
       "x": 54,
       "y": 7,
@@ -122,7 +122,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-7-crop-fb58968c-498c-47a0-b784-718bfa75363b",
     "exerciseNumber": 7,
-    "answer": "You",
+    "answer": "Really",
     "crop": {
       "x": 310,
       "y": 115,
@@ -135,7 +135,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-7-crop-7749c563-d582-4a7e-937e-16db06b22439",
     "exerciseNumber": 7,
-    "answer": "Really",
+    "answer": "Early",
     "crop": {
       "x": 458,
       "y": 112,
@@ -148,7 +148,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-7-crop-34106df9-3df7-40d8-b622-be64fa8d50a5",
     "exerciseNumber": 7,
-    "answer": "Early",
+    "answer": "Go",
     "crop": {
       "x": 887,
       "y": 108,
@@ -161,7 +161,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-7-crop-74a6ad30-6e21-4971-b2c0-3a80a08198a0",
     "exerciseNumber": 7,
-    "answer": "Go",
+    "answer": "To",
     "crop": {
       "x": 1063,
       "y": 76,
@@ -174,7 +174,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-7-crop-7acb02f1-77c7-4abb-b9a4-1f4cc9827120",
     "exerciseNumber": 7,
-    "answer": "To",
+    "answer": "The",
     "crop": {
       "x": 1334,
       "y": 105,
@@ -187,20 +187,20 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-7-crop-9af4d219-4517-415f-b7fd-af2ecadd6d11",
     "exerciseNumber": 7,
-    "answer": "THe",
+    "answer": "Room",
     "crop": {
       "x": 1463,
       "y": 76,
       "width": 134,
       "height": 212
     },
-    "sequenceOrder": 7,
+    "sequenceOrder": 9,
     "verification": "pending"
   },
   {
     "id": "steno-7-crop-16f4f5ad-2f65-4f1e-8999-33edcc0e9834",
     "exerciseNumber": 7,
-    "answer": "Meeting",
+    "answer": "Room",
     "crop": {
       "x": 1651,
       "y": 94,
@@ -213,14 +213,14 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-7-crop-14522933-439c-4697-8f33-8e6d62ec7269",
     "exerciseNumber": 7,
-    "answer": "Room",
+    "answer": "Meeting",
     "crop": {
       "x": 1928,
       "y": 87,
       "width": 170,
       "height": 176
     },
-    "sequenceOrder": 9,
+    "sequenceOrder": 7,
     "verification": "pending"
   },
   {
@@ -486,7 +486,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-10-crop-477c4c42-d0cb-4aae-a317-facccb5b844d",
     "exerciseNumber": 10,
-    "answer": "The",
+    "answer": "The totally",
     "crop": {
       "x": 851,
       "y": 29,
@@ -499,7 +499,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-10-crop-a71f675b-dd3c-4992-9532-90f92c1bc60f",
     "exerciseNumber": 10,
-    "answer": "Totally",
+    "answer": "New",
     "crop": {
       "x": 1205,
       "y": 74,
@@ -512,7 +512,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-10-crop-27bf3c31-065d-467a-877c-81516bf01661",
     "exerciseNumber": 10,
-    "answer": "New",
+    "answer": "Look",
     "crop": {
       "x": 1333,
       "y": 53,
@@ -525,7 +525,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-10-crop-ab900324-0629-46a8-b347-58c8011000e7",
     "exerciseNumber": 10,
-    "answer": "Look",
+    "answer": "Of our",
     "crop": {
       "x": 1687,
       "y": 74,
@@ -538,7 +538,7 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
   {
     "id": "steno-10-crop-e64debbc-bad4-4b9e-908a-cda37db293af",
     "exerciseNumber": 10,
-    "answer": "Of our store",
+    "answer": "Store",
     "crop": {
       "x": 1876,
       "y": 46,
