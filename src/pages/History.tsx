@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { practiceFormatLabel } from "../../server/src/sentenceBank";
 import { getPlayerHistory, getPlayerRank, type MatchHistoryRow, type PlayerStats } from "../lib/playerApi";
 
 export default function History() {
@@ -33,6 +34,7 @@ export default function History() {
               <tr>
                 <th className="pb-3">Date</th>
                 <th className="pb-3">Mode</th>
+                <th className="pb-3">Format</th>
                 <th className="pb-3">WPM</th>
                 <th className="pb-3">Accuracy</th>
                 <th className="pb-3">Score</th>
@@ -43,6 +45,7 @@ export default function History() {
                 <tr key={row.id} className="border-t border-white/8 text-white">
                   <td className="py-3">{new Date(row.created_at).toLocaleDateString()}</td>
                   <td>{row.mode}</td>
+                  <td>{practiceFormatLabel(row.practice_format)}</td>
                   <td>{row.wpm}</td>
                   <td>{row.accuracy}%</td>
                   <td>{row.score}</td>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { mockMatchConfig, type GreggSubmode } from "../lib/mockData";
 import { resolveGreggSubmode } from "../lib/greggGameplay";
 import { GreggModeSelector } from "../components/GreggModeSelector";
+import { PracticeFormatSelector } from "../components/PracticeFormatSelector";
 
 const categories = ["Corporate", "Communication", "Records", "Accounting", "Technology", "General", "Stenography"] as const;
 const difficulties = ["Easy", "Normal", "Hard"] as const;
@@ -16,6 +17,7 @@ export default function Play() {
   const [difficulty, setDifficulty] = useState<Difficulty>("Normal");
   const [roundTime, setRoundTime] = useState<number>(90);
   const [greggSubmode, setGreggSubmode] = useState<GreggSubmode>("full-sentence");
+  const [practiceFormat, setPracticeFormat] = useState<GreggSubmode>("word-phrase");
 
   const startPractice = () => {
     navigate("/app/pre-match", {
@@ -27,7 +29,7 @@ export default function Play() {
           difficulty,
           roundTime,
           opponents: [],
-          ...(category === "Stenography" ? { greggSubmode: resolveGreggSubmode(greggSubmode) } : {}),
+          ...(category === "Stenography" ? { greggSubmode: resolveGreggSubmode(greggSubmode) } : { practiceFormat }),
         },
       },
     });
@@ -56,7 +58,7 @@ export default function Play() {
           </div>
           {category === "Stenography" ? (
             <GreggModeSelector value={greggSubmode} onChange={setGreggSubmode} />
-          ) : null}
+          ) : <PracticeFormatSelector value={practiceFormat} onChange={setPracticeFormat} />}
         </div>
 
         <div>

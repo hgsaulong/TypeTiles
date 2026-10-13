@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { GameResult } from "../scenes/GameScene";
 import { greggSubmodeLabel } from "../lib/greggGameplay";
+import { practiceFormatLabel } from "../../server/src/sentenceBank";
 import { getPlayerHistory, getPlayerRank, type MatchHistoryRow, type PlayerStats } from "../lib/playerApi";
 
 type ResultState = {
@@ -59,11 +60,12 @@ export default function Results() {
             ["WPM", result.wpm.toFixed(1)],
             ["Accuracy", `${result.accuracy.toFixed(1)}%`],
             ["Error Rate", `${result.errorRate.toFixed(1)}%`],
-            ["Completed Words", String(result.completedWords)],
+            [result.practiceFormat === "full-sentence" ? "Completed Sentences" : "Completed Words", String(result.completedWords)],
             ["End Reason", result.endReason === "health" ? "Health depleted" : "Time expired"],
             ["Difficulty", result.difficulty],
             ["Category", result.wordSet],
             ...(result.greggSubmode ? [["Stenography Mode", greggSubmodeLabel(result.greggSubmode)]] : []),
+            ...(result.practiceFormat ? [["Practice Format", practiceFormatLabel(result.practiceFormat)]] : []),
             ["Round Time", `${result.roundTime}s`],
             ["Remaining Lives", String(result.remainingLives)],
           ].map(([label, value]) => (
@@ -93,6 +95,7 @@ export default function Results() {
                 <tr>
                   <th className="pb-3">Date</th>
                   <th className="pb-3">Mode</th>
+                  <th className="pb-3">Format</th>
                   <th className="pb-3">Difficulty</th>
                   <th className="pb-3">Category</th>
                   <th className="pb-3">Round</th>
@@ -107,6 +110,7 @@ export default function Results() {
                   <tr key={match.id} className="border-t border-white/10 text-white">
                     <td className="py-3">{new Date(match.created_at).toLocaleString()}</td>
                     <td>{match.mode}</td>
+                    <td>{practiceFormatLabel(match.practice_format)}</td>
                     <td>{match.difficulty}</td>
                     <td>{match.word_set}</td>
                     <td>{match.round_time}s</td>

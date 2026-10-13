@@ -12,7 +12,8 @@
     "start": "node dist/index.js",
     "db:reset": "node scripts/resetDb.js",
     "email:test": "tsx scripts/testEmail.ts",
-    "test:auth": "tsx --test tests/passwordReset.test.ts tests/emailVerification.test.ts"
+    "test:auth": "tsx --test tests/passwordReset.test.ts tests/emailVerification.test.ts",
+    "test:sentences": "tsx --test tests/sentencePractice.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

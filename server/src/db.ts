@@ -144,6 +144,12 @@ async function createTables(db: Database) {
     )
   `);
 
+  // Additive migration: existing matches and LAN defaults retain word gameplay.
+  const matchColumns = await db.all<{ name: string }[]>("PRAGMA table_info(matches)");
+  if (!matchColumns.some((column) => column.name === "practice_format")) {
+    await db.exec("ALTER TABLE matches ADD COLUMN practice_format TEXT NOT NULL DEFAULT 'word-phrase'");
+  }
+
   // Match participants table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS match_participants (

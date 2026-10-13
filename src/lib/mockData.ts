@@ -1,4 +1,5 @@
-export type GreggSubmode = "word-phrase" | "full-sentence";
+import type { PracticeFormat } from "../../server/src/sentenceBank";
+export type GreggSubmode = PracticeFormat;
 
 export type MatchConfig = {
   mode: string;
@@ -7,6 +8,7 @@ export type MatchConfig = {
   wordSet: string;
   opponents: string[];
   greggSubmode?: GreggSubmode;
+  practiceFormat?: PracticeFormat;
 };
 
 export type PlayerProfile = {

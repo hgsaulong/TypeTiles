@@ -20,6 +20,7 @@ export class WordTarget {
   private wordImage?: Phaser.GameObjects.Image;
   private cropBackground?: Phaser.GameObjects.Rectangle;
   private isImagePrompt = false;
+  private isSentencePrompt = false;
   private greggReference?: Phaser.GameObjects.Text;
   private greggImageOffset = 0;
   private greggReferenceOffset = 0;
@@ -60,6 +61,7 @@ export class WordTarget {
   }
 
   setWord(word: string, x: number, y: number): void {
+    this.isSentencePrompt = false;
     this.activeWord = word;
     this.isImagePrompt = false;
     this.wordImage?.setVisible(false);
@@ -79,6 +81,19 @@ export class WordTarget {
     this.wordBlock.setSize(blockWidth, blockHeight);
     this.wordShadow.setSize(blockWidth, blockHeight);
 
+    this.setPosition(x, y);
+  }
+
+  setSentence(sentence: string, x: number, y: number, maxWidth: number): void {
+    this.setWord(sentence, x, y);
+    this.isSentencePrompt = true;
+    this.wordTextTyped.setVisible(false);
+    this.wordTextRemaining.setFontSize(maxWidth < 400 ? 16 : 20)
+      .setWordWrapWidth(Math.max(1, maxWidth - 32), true).setText(sentence);
+    const width = Math.min(maxWidth, this.wordTextRemaining.width + 32);
+    const height = Math.max(this.tileHeight, this.wordTextRemaining.height + 24);
+    this.wordBlock.setSize(width, height);
+    this.wordShadow.setSize(width, height);
     this.setPosition(x, y);
   }
 
@@ -195,7 +210,7 @@ export class WordTarget {
   }
 
   setTypedText(typedText: string): void {
-    if (this.isImagePrompt) return;
+    if (this.isImagePrompt || this.isSentencePrompt) return;
 
     const typedPart = this.activeWord.substring(0, typedText.length);
     const remainingPart = this.activeWord.substring(typedText.length);
@@ -207,7 +222,7 @@ export class WordTarget {
   }
 
   resetToFullWord(): void {
-    if (this.isImagePrompt) return;
+    if (this.isImagePrompt || this.isSentencePrompt) return;
 
     this.wordTextTyped.setText("");
     this.wordTextRemaining.setText(this.activeWord);

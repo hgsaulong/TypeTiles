@@ -4,6 +4,7 @@ import { mockMatchConfig } from "../lib/mockData";
 import { createPlayerMatch } from "../lib/playerApi";
 import { isGreggStenographyCategory } from "../data/greggPrompts";
 import { greggSubmodeLabel, resolveGreggSubmode } from "../lib/greggGameplay";
+import { practiceFormatLabel } from "../../server/src/sentenceBank";
 
 export default function PreMatch() {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ export default function PreMatch() {
         difficulty: matchConfig.difficulty,
         roundTime: matchConfig.roundTime,
         wordSet: matchConfig.wordSet,
+        practiceFormat: matchConfig.practiceFormat,
       });
     }
 
@@ -88,7 +90,7 @@ export default function PreMatch() {
             Category: {matchConfig.wordSet}
             {isGreggStenographyCategory(matchConfig.wordSet) ? (
               <div className="mt-2">Stenography Mode: {greggSubmodeLabel(resolveGreggSubmode(matchConfig.greggSubmode))}</div>
-            ) : null}
+            ) : <div className="mt-2">Practice Format: {practiceFormatLabel(matchConfig.practiceFormat)}</div>}
           </div>
         </div>
 

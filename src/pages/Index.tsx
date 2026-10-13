@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { mockMatchConfig, type GreggSubmode } from "../lib/mockData";
 import { resolveGreggSubmode } from "../lib/greggGameplay";
 import { GreggModeSelector } from "../components/GreggModeSelector";
+import { PracticeFormatSelector } from "../components/PracticeFormatSelector";
 import { usePlayerAuth } from "../lib/PlayerAuthContext";
 import { getPlayerHistory, getPlayerRank, type MatchHistoryRow, type PlayerStats } from "../lib/playerApi";
 import { getProfileAvatar, getProfileBackground } from "../lib/profileAssets";
@@ -35,6 +36,7 @@ function HomeStatIcon({ icon: Icon, alt }: { icon: LucideIcon; alt: string }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [greggSubmode, setGreggSubmode] = useState<GreggSubmode>("full-sentence");
+  const [practiceFormat, setPracticeFormat] = useState<GreggSubmode>("word-phrase");
   const { user, stats: restoredStats } = usePlayerAuth();
   const [dashboardStats, setDashboardStats] = useState<PlayerStats | null>(restoredStats);
   const [latestMatch, setLatestMatch] = useState<MatchHistoryRow | null>(null);
@@ -89,7 +91,7 @@ export default function Dashboard() {
           mode: "Solo Practice",
           difficulty: selectedDifficulty,
           opponents: [],
-          ...(selectedCategory === "STENOGRAPHY" ? { greggSubmode: resolveGreggSubmode(greggSubmode) } : {}),
+          ...(selectedCategory === "STENOGRAPHY" ? { greggSubmode: resolveGreggSubmode(greggSubmode) } : { practiceFormat }),
         },
       },
     });
@@ -266,7 +268,7 @@ export default function Dashboard() {
                 })}
               </div>
 
-              {selectedCategory === "STENOGRAPHY" ? <GreggModeSelector value={greggSubmode} onChange={setGreggSubmode} /> : null}
+              {selectedCategory === "STENOGRAPHY" ? <GreggModeSelector value={greggSubmode} onChange={setGreggSubmode} /> : <PracticeFormatSelector value={practiceFormat} onChange={setPracticeFormat} />}
 
               <div className="mt-6 flex items-center gap-3 text-white/90">
                 <div className="h-px flex-1 bg-white/70" />

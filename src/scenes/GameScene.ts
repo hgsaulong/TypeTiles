@@ -9,6 +9,7 @@ import { FULL_SENTENCE_SPEED_MULTIPLIER, resolveGreggSubmode } from "../lib/greg
 import { getSoloGreggPrompts, isGreggStenographyCategory } from "../data/greggPrompts";
 import { isValidGreggCrop } from "../data/greggCropMappings";
 import { PENDING_GREGG_PILOT_MAPPINGS } from "../dev/greggPilotMappings";
+import { getCategorySentences, type PracticeFormat } from "../../server/src/sentenceBank";
 
 export type GameResult = {
   score: number;
@@ -23,6 +24,7 @@ export type GameResult = {
   roundTime: number;
   wordSet: string;
   greggSubmode?: GreggSubmode;
+  practiceFormat?: PracticeFormat;
 };
 
 export type GameMode = "solo" | "multiplayer";
@@ -89,6 +91,7 @@ export default class GameScene extends Phaser.Scene {
   private wordDeck: string[] = [];
   private wordDeckIndex = 0;
   private isSoloGregg = false;
+  private isSoloSentence = false;
   private isGreggCropPilot = false;
   private greggPilotExercise: number | null = null;
   private greggIndex = 0;
@@ -139,6 +142,15 @@ export default class GameScene extends Phaser.Scene {
     this.isSoloGregg = mode === "solo" && (this.isGreggCropPilot || isGreggStenographyCategory(matchConfig.wordSet));
     this.greggIndex = 0;
     this.wordCategory = getWordCategory(matchConfig.wordSet);
+    this.isSoloSentence = mode === "solo" && !this.isSoloGregg
+      && matchConfig.practiceFormat === "full-sentence"
+      && getCategorySentences(matchConfig.wordSet).length > 0;
+    if (this.isSoloSentence) {
+      this.wordDeck = [...getCategorySentences(matchConfig.wordSet)];
+      this.wordDeckIndex = 0;
+      this.fallSpeedPxPerSec = GameScene.DIFFICULTY_CONFIG[this.difficultyKey].fallSpeed * 0.5;
+      return;
+    }
     if (this.isSoloGregg) {
       this.wordDeck = [];
       this.wordDeckIndex = 0;
@@ -252,18 +264,19 @@ export default class GameScene extends Phaser.Scene {
     }
 
     if (this.isSoloGregg) this.layoutGreggInput();
+    if (this.isSoloSentence) this.layoutSentenceInput();
     this.spawnWord();
     this.updateHud();
     this.reportPerformance();
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (this.isSoloGregg && (event.ctrlKey || event.metaKey || event.altKey || event.isComposing)) return;
+      if ((this.isSoloGregg || this.isSoloSentence) && (event.ctrlKey || event.metaKey || event.altKey || event.isComposing)) return;
       if (event.key === "Escape") {
         this.pauseMenu.toggle();
         return;
       }
 
-      if (this.isSoloGregg && (event.key.length === 1 || event.key === "Backspace")) event.preventDefault();
+      if ((this.isSoloGregg || this.isSoloSentence) && (event.key.length === 1 || event.key === "Backspace")) event.preventDefault();
       this.handleTyping(event.key);
     };
     this.input.keyboard?.on("keydown", onKeyDown);
@@ -277,6 +290,11 @@ export default class GameScene extends Phaser.Scene {
       if (this.isSoloGregg) {
         this.layoutGreggInput();
         if (!this.gameOver) this.layoutGreggTarget(false);
+        return;
+      }
+      if (this.isSoloSentence) {
+        this.layoutSentenceInput();
+        if (!this.gameOver) this.layoutSentenceTarget(false);
         return;
       }
 
@@ -304,10 +322,10 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    const bottomLimit = this.isSoloGregg
+    const bottomLimit = this.isSoloGregg || this.isSoloSentence
       ? this.greggPlayBottom - this.wordTarget.height / 2
       : this.scale.height - 120;
-    this.wordY = this.isSoloGregg
+    this.wordY = this.isSoloGregg || this.isSoloSentence
       ? Math.min(bottomLimit, this.wordY + this.fallSpeedPxPerSec * dt)
       : this.wordY + this.fallSpeedPxPerSec * dt;
     this.wordTarget.setPosition(this.wordX, this.wordY);
@@ -355,7 +373,7 @@ export default class GameScene extends Phaser.Scene {
     }
     const hasMultiplayerSequence = this.gameMode === "multiplayer" && this.multiplayerWordSequence.length > 0;
     if (!hasMultiplayerSequence && this.wordDeckIndex >= this.wordDeck.length && this.wordDeck.length > 0) {
-      this.wordDeck = this.shuffleWords(this.wordDeck, this.activeWord);
+      if (!this.isSoloSentence) this.wordDeck = this.shuffleWords(this.wordDeck, this.activeWord);
       this.wordDeckIndex = 0;
     }
 
@@ -371,6 +389,12 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this.activeWord = nextWord;
+    if (this.isSoloSentence) {
+      this.typedText = "";
+      this.typedDisplay.setText("").setColor("#ffff00");
+      this.layoutSentenceTarget(true);
+      return;
+    }
 
     if (this.wordCategory === "stenography") {
       const prompt = getGreggPrompt(this.activeWord);
@@ -409,6 +433,33 @@ export default class GameScene extends Phaser.Scene {
       [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
     }
     return shuffled;
+  }
+
+  private layoutSentenceInput(): void {
+    const currentText = this.typedText;
+    this.typedDisplay.setFontSize(this.scale.width < 480 ? 14 : 18)
+      .setWordWrapWidth(Math.max(1, this.scale.width - 48), true).setOrigin(0.5, 0);
+    let height = 0;
+    for (const sentence of this.wordDeck) {
+      this.typedDisplay.setText(sentence);
+      height = Math.max(height, this.typedDisplay.height);
+    }
+    const top = this.scale.height - height - 16;
+    this.typedDisplay.setText(currentText).setPosition(this.scale.width / 2, top);
+    this.greggPlayBottom = top - 16;
+  }
+
+  private layoutSentenceTarget(resetPosition: boolean): void {
+    this.wordX = this.scale.width / 2;
+    this.wordTarget.setSentence(this.activeWord, this.wordX, this.wordY, Math.max(1, Math.min(760, this.scale.width - 48)));
+    const top = this.greggPlayTop + this.wordTarget.height / 2;
+    const bottom = this.greggPlayBottom - this.wordTarget.height / 2;
+    if (this.scale.width < 240 || top >= bottom) {
+      this.showGreggUnavailable("The game area is too small for sentence practice. Enlarge it and restart.");
+      return;
+    }
+    this.wordY = resetPosition ? top : Phaser.Math.Clamp(this.wordY, top, bottom);
+    this.wordTarget.setPosition(this.wordX, this.wordY);
   }
 
   private greggTextureKey(id: string): string {
@@ -561,7 +612,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.cameras.main.shake(80, 0.003);
 
-    if (this.isSoloGregg) {
+    if (this.isSoloGregg || this.isSoloSentence) {
       this.typedText = this.typedText.slice(0, -1);
       this.typedDisplay.setText(this.greggInputText(this.typedText)).setColor("#ff665f");
       return;
@@ -609,7 +660,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private layoutHud(): void {
-    if (this.isSoloGregg) {
+    if (this.isSoloGregg || this.isSoloSentence) {
       this.topHudPanel.setPosition(0, 0).setSize(this.scale.width, 58);
       const topCellWidth = Math.max(0, this.scale.width - 112) / this.topHudMetrics.length;
       this.topHudMetrics.forEach(({ label, value }, index) => {
@@ -688,12 +739,13 @@ export default class GameScene extends Phaser.Scene {
       roundTime: this.matchConfig.roundTime,
       wordSet: this.matchConfig.wordSet,
       ...(this.isSoloGregg ? { greggSubmode: this.isGreggCropPilot ? "word-phrase" as const : "full-sentence" as const } : {}),
+      ...(!this.isSoloGregg && this.gameMode === "solo" ? { practiceFormat: this.isSoloSentence ? "full-sentence" as const : "word-phrase" as const } : {}),
     });
 
     const completionMessage = this.gameMode === "multiplayer" ? "\nWaiting for other players..." : "";
     this.gameOverDisplay
       .setText(
-        `GAME OVER\n\nReason: ${this.endReason === "health" ? "Health depleted" : "Time expired"}\nScore: ${this.score}\nWPM: ${wpm.toFixed(1)}\nAccuracy: ${accuracy.toFixed(1)}%\nError Rate: ${errorRate.toFixed(1)}%\nCompleted words: ${this.completedWords}\nLives: ${this.lives}${completionMessage}`,
+        `GAME OVER\n\nReason: ${this.endReason === "health" ? "Health depleted" : "Time expired"}\nScore: ${this.score}\nWPM: ${wpm.toFixed(1)}\nAccuracy: ${accuracy.toFixed(1)}%\nError Rate: ${errorRate.toFixed(1)}%\nCompleted ${this.isSoloSentence ? "sentences" : "words"}: ${this.completedWords}\nLives: ${this.lives}${completionMessage}`,
       )
       .setVisible(true);
   }

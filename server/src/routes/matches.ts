@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { getDatabase } from "../db.js";
 import { authMiddleware } from "../middleware.js";
+import { getCategorySentences, type PracticeFormat } from "../sentenceBank.js";
 
 const router = Router();
 
@@ -10,6 +11,7 @@ interface CreateMatchBody {
   roundTime: number;
   wordSet: string;
   opponents?: number[];
+  practiceFormat?: PracticeFormat;
 }
 
 interface SubmitScoreBody {
@@ -23,16 +25,23 @@ interface SubmitScoreBody {
 router.post("/matches", authMiddleware, async (req: Request<{}, {}, CreateMatchBody>, res: Response) => {
   try {
     const { mode, difficulty, roundTime, wordSet } = req.body;
+    const practiceFormat = req.body.practiceFormat ?? "word-phrase";
 
     if (!mode || !difficulty || !wordSet) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+    if (practiceFormat !== "word-phrase" && practiceFormat !== "full-sentence") {
+      return res.status(400).json({ error: "Invalid practice format" });
+    }
+    if (practiceFormat === "full-sentence" && (mode !== "Solo Practice" || getCategorySentences(wordSet).length === 0)) {
+      return res.status(400).json({ error: "Sentence practice requires a supported Solo category" });
     }
 
     const db = getDatabase();
 
     const result = await db.run(
-      `INSERT INTO matches (mode, difficulty, round_time, word_set, status) VALUES (?, ?, ?, ?, ?)`,
-      [mode, difficulty, roundTime || 90, wordSet, "active"]
+      `INSERT INTO matches (mode, difficulty, round_time, word_set, status, practice_format) VALUES (?, ?, ?, ?, ?, ?)`,
+      [mode, difficulty, roundTime || 90, wordSet, "active", practiceFormat]
     );
 
     const matchId = result.lastID;
@@ -50,6 +59,7 @@ router.post("/matches", authMiddleware, async (req: Request<{}, {}, CreateMatchB
       roundTime: roundTime || 90,
       wordSet,
       status: "active",
+      practiceFormat,
     });
   } catch (error) {
     console.error("Create match error:", error);

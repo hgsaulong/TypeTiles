@@ -1,3 +1,5 @@
+import type { PracticeFormat } from "../../server/src/sentenceBank";
+
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ??
   `http://${window.location.hostname}:3001/api`;
@@ -25,6 +27,7 @@ export type PlayerStats = {
 };
 
 export type MatchHistoryRow = {
+  practice_format?: PracticeFormat;
   id: number;
   mode: string;
   difficulty: string;
@@ -56,6 +59,7 @@ export type CreateMatchInput = {
   difficulty: string;
   roundTime: number;
   wordSet: string;
+  practiceFormat?: PracticeFormat;
 };
 
 export type CreateMatchResponse = CreateMatchInput & {
