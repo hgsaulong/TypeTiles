@@ -325,8 +325,8 @@ export default class GameScene extends Phaser.Scene {
         return;
       }
       if (this.isGreggCropPilot) {
-        // Playable counts; the stored Exercise 7 punctuation record is excluded.
-        const expectedCounts: Record<number, number> = { 6: 8, 7: 8, 8: 8, 9: 8, 10: 9 };
+        // Playable counts; the stored Exercise 7 comma and period are excluded.
+        const expectedCounts: Record<number, number> = { 6: 8, 7: 7, 8: 8, 9: 8, 10: 9 };
         const ids = new Set<string>();
         const orders = new Map<number, number>();
         const selectedCounts = this.greggPilotExercise === null ? expectedCounts
