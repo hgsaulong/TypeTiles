@@ -1,9 +1,12 @@
+export type GreggSubmode = "word-phrase" | "full-sentence";
+
 export type MatchConfig = {
   mode: string;
   difficulty: string;
   roundTime: number;
   wordSet: string;
   opponents: string[];
+  greggSubmode?: GreggSubmode;
 };
 
 export type PlayerProfile = {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { GameResult } from "../scenes/GameScene";
+import { greggSubmodeLabel } from "../lib/greggGameplay";
 import { getPlayerHistory, getPlayerRank, type MatchHistoryRow, type PlayerStats } from "../lib/playerApi";
 
 type ResultState = {
@@ -62,6 +63,7 @@ export default function Results() {
             ["End Reason", result.endReason === "health" ? "Health depleted" : "Time expired"],
             ["Difficulty", result.difficulty],
             ["Category", result.wordSet],
+            ...(result.greggSubmode ? [["Stenography Mode", greggSubmodeLabel(result.greggSubmode)]] : []),
             ["Round Time", `${result.roundTime}s`],
             ["Remaining Lives", String(result.remainingLives)],
           ].map(([label, value]) => (

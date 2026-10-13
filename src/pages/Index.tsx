@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCheck, Star, Zap, type LucideIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { mockMatchConfig } from "../lib/mockData";
+import { mockMatchConfig, type GreggSubmode } from "../lib/mockData";
+import { resolveGreggSubmode } from "../lib/greggGameplay";
+import { GreggModeSelector } from "../components/GreggModeSelector";
 import { usePlayerAuth } from "../lib/PlayerAuthContext";
 import { getPlayerHistory, getPlayerRank, type MatchHistoryRow, type PlayerStats } from "../lib/playerApi";
 import { getProfileAvatar, getProfileBackground } from "../lib/profileAssets";
@@ -32,6 +34,7 @@ function HomeStatIcon({ icon: Icon, alt }: { icon: LucideIcon; alt: string }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [greggSubmode, setGreggSubmode] = useState<GreggSubmode>("full-sentence");
   const { user, stats: restoredStats } = usePlayerAuth();
   const [dashboardStats, setDashboardStats] = useState<PlayerStats | null>(restoredStats);
   const [latestMatch, setLatestMatch] = useState<MatchHistoryRow | null>(null);
@@ -86,11 +89,13 @@ export default function Dashboard() {
           mode: "Solo Practice",
           difficulty: selectedDifficulty,
           opponents: [],
+          ...(selectedCategory === "STENOGRAPHY" ? { greggSubmode: resolveGreggSubmode(greggSubmode) } : {}),
         },
       },
     });
   };
 
+  const categoryPreview = categories.find((category) => category.label === selectedCategory);
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden pb-4">
       <h1 className="shrink-0 px-1 text-[1.95rem] font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">Welcome to Type Tiles!</h1>
@@ -226,7 +231,7 @@ export default function Dashboard() {
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-[2px]">
           <div className="scrollbar-hidden max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-[8px] border border-[#5da3c5] bg-[#13173b] shadow-[0_24px_60px_rgba(0,0,0,0.55)]">
             <div className="h-[116px] w-full overflow-hidden">
-              <img alt="" className="h-full w-full object-cover" src={categories.find((category) => category.label === selectedCategory && !("unavailable" in category && category.unavailable) && "image" in category)?.image ?? `${assetRoot}/image5.png`} />
+              <img alt="" className="h-full w-full object-cover" src={categoryPreview && "image" in categoryPreview ? categoryPreview.image : `${assetRoot}/image5.png`} />
             </div>
 
             <div className="px-7 py-6">
@@ -260,6 +265,8 @@ export default function Dashboard() {
                   );
                 })}
               </div>
+
+              {selectedCategory === "STENOGRAPHY" ? <GreggModeSelector value={greggSubmode} onChange={setGreggSubmode} /> : null}
 
               <div className="mt-6 flex items-center gap-3 text-white/90">
                 <div className="h-px flex-1 bg-white/70" />

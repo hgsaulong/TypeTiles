@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { mockMatchConfig } from "../lib/mockData";
 import { createPlayerMatch } from "../lib/playerApi";
+import { isGreggStenographyCategory } from "../data/greggPrompts";
+import { greggSubmodeLabel, resolveGreggSubmode } from "../lib/greggGameplay";
 
 export default function PreMatch() {
   const navigate = useNavigate();
@@ -84,6 +86,9 @@ export default function PreMatch() {
 
           <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white">
             Category: {matchConfig.wordSet}
+            {isGreggStenographyCategory(matchConfig.wordSet) ? (
+              <div className="mt-2">Stenography Mode: {greggSubmodeLabel(resolveGreggSubmode(matchConfig.greggSubmode))}</div>
+            ) : null}
           </div>
         </div>
 

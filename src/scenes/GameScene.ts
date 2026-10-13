@@ -4,7 +4,8 @@ import { PauseMenu } from "./game/PauseMenu";
 import { getLaneX, pickLaneNotSame, type Lane } from "./game/lanes";
 import { WaterEffects, WATER_TEXTURE_KEY } from "./game/WaterEffects";
 import { WordTarget } from "./game/WordTarget";
-import type { MatchConfig } from "../lib/mockData";
+import type { MatchConfig, GreggSubmode } from "../lib/mockData";
+import { FULL_SENTENCE_SPEED_MULTIPLIER, resolveGreggSubmode } from "../lib/greggGameplay";
 import { getSoloGreggPrompts, isGreggStenographyCategory } from "../data/greggPrompts";
 import { isValidGreggCrop } from "../data/greggCropMappings";
 import { PENDING_GREGG_PILOT_MAPPINGS } from "../dev/greggPilotMappings";
@@ -21,6 +22,7 @@ export type GameResult = {
   difficulty: string;
   roundTime: number;
   wordSet: string;
+  greggSubmode?: GreggSubmode;
 };
 
 export type GameMode = "solo" | "multiplayer";
@@ -128,10 +130,8 @@ export default class GameScene extends Phaser.Scene {
     this.remainingSeconds = this.matchDurationSeconds;
     this.difficultyKey = this.getDifficultyKey(matchConfig.difficulty);
     const selectedExercise = /^Gregg Exercise ([6-9]|10) Crop Pilot$/.exec(matchConfig.wordSet);
-    // Default on in local development; explicit false restores full-sentence comparison.
-    const studentCropPreview = import.meta.env.DEV
-      && import.meta.env.VITE_DEV_GREGG_CATEGORY_CROPS !== "false"
-      && isGreggStenographyCategory(matchConfig.wordSet);
+    const studentCropPreview = isGreggStenographyCategory(matchConfig.wordSet)
+      && resolveGreggSubmode(matchConfig.greggSubmode) === "word-phrase";
     this.isGreggCropPilot = import.meta.env.DEV && mode === "solo"
       && ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
       && (studentCropPreview || matchConfig.wordSet === "Gregg Exercises 6-10 Crop Pilot" || selectedExercise !== null);
@@ -142,7 +142,8 @@ export default class GameScene extends Phaser.Scene {
     if (this.isSoloGregg) {
       this.wordDeck = [];
       this.wordDeckIndex = 0;
-      this.fallSpeedPxPerSec = GameScene.DIFFICULTY_CONFIG[this.difficultyKey].fallSpeed;
+      this.fallSpeedPxPerSec = GameScene.DIFFICULTY_CONFIG[this.difficultyKey].fallSpeed
+        * (this.isGreggCropPilot ? 1 : FULL_SENTENCE_SPEED_MULTIPLIER);
       return;
     }
     const preferredWords = [...new Set(getWordsForDifficulty(this.wordCategory, this.difficultyKey))];
@@ -684,6 +685,7 @@ export default class GameScene extends Phaser.Scene {
       difficulty: this.matchConfig.difficulty,
       roundTime: this.matchConfig.roundTime,
       wordSet: this.matchConfig.wordSet,
+      ...(this.isSoloGregg ? { greggSubmode: this.isGreggCropPilot ? "word-phrase" as const : "full-sentence" as const } : {}),
     });
 
     const completionMessage = this.gameMode === "multiplayer" ? "\nWaiting for other players..." : "";

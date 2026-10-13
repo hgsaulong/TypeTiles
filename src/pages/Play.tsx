@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { mockMatchConfig } from "../lib/mockData";
+import { mockMatchConfig, type GreggSubmode } from "../lib/mockData";
+import { resolveGreggSubmode } from "../lib/greggGameplay";
+import { GreggModeSelector } from "../components/GreggModeSelector";
 
 const categories = ["Corporate", "Communication", "Records", "Accounting", "Technology", "General", "Stenography"] as const;
 const difficulties = ["Easy", "Normal", "Hard"] as const;
@@ -13,6 +15,7 @@ export default function Play() {
   const [category, setCategory] = useState<(typeof categories)[number]>("General");
   const [difficulty, setDifficulty] = useState<Difficulty>("Normal");
   const [roundTime, setRoundTime] = useState<number>(90);
+  const [greggSubmode, setGreggSubmode] = useState<GreggSubmode>("full-sentence");
 
   const startPractice = () => {
     navigate("/app/pre-match", {
@@ -24,6 +27,7 @@ export default function Play() {
           difficulty,
           roundTime,
           opponents: [],
+          ...(category === "Stenography" ? { greggSubmode: resolveGreggSubmode(greggSubmode) } : {}),
         },
       },
     });
@@ -50,6 +54,9 @@ export default function Play() {
               </button>
             ))}
           </div>
+          {category === "Stenography" ? (
+            <GreggModeSelector value={greggSubmode} onChange={setGreggSubmode} />
+          ) : null}
         </div>
 
         <div>
