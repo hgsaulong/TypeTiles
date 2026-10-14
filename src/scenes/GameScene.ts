@@ -8,7 +8,7 @@ import type { MatchConfig, GreggSubmode } from "../lib/mockData";
 import { FULL_SENTENCE_SPEED_MULTIPLIER, resolveGreggSubmode } from "../lib/greggGameplay";
 import { getSoloGreggPrompts, isGreggStenographyCategory } from "../data/greggPrompts";
 import { isValidGreggCrop } from "../data/greggCropMappings";
-import { PENDING_GREGG_PILOT_MAPPINGS } from "../dev/greggPilotMappings";
+import { PENDING_GREGG_PILOT_MAPPINGS } from "../data/dev/greggPilotMappings";
 import { getCategorySentences, type PracticeFormat } from "../../server/src/sentenceBank";
 
 export type GameResult = {

@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { PENDING_GREGG_PILOT_MAPPINGS } from "./greggPilotMappings";
-import { STENO_EXERCISES } from "../data/stenoExercises";
+import { STENO_EXERCISES } from "../stenoExercises";
 
 function coverageWarning(exerciseNumber: number): string {
   const tokens = (text: string) => text.toLowerCase().match(/[a-z]+/g) ?? [];

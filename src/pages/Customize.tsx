@@ -1,5 +1,6 @@
-import { Settings } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Plus, Settings } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePlayerAuth } from "../lib/PlayerAuthContext";
 import { getProfileAvatar, getProfileBackground, PROFILE_AVATARS, PROFILE_BACKGROUNDS, type ProfileAvatarId, type ProfileBackgroundId } from "../lib/profileAssets";
@@ -7,12 +8,12 @@ import { getProfileAvatar, getProfileBackground, PROFILE_AVATARS, PROFILE_BACKGR
 const avatars = Object.entries(PROFILE_AVATARS).map(([id, avatar]) => ({ id: id as ProfileAvatarId, ...avatar }));
 const backgrounds = Object.entries(PROFILE_BACKGROUNDS).map(([id, background]) => ({ id: id as ProfileBackgroundId, ...background }));
 
-type AvatarId = ProfileAvatarId;
+type AvatarId = ProfileAvatarId | string;
 type BackgroundId = ProfileBackgroundId;
 type ProfileTab = "avatar" | "background";
 
 function validAvatar(value: string | undefined): AvatarId {
-  return avatars.some((avatar) => avatar.id === value) ? (value as AvatarId) : "hani";
+  return value?.startsWith("data:image/") || avatars.some((avatar) => avatar.id === value) ? value as AvatarId : "hani";
 }
 
 function validBackground(value: string | undefined): BackgroundId {
@@ -29,6 +30,7 @@ export default function Customize() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setDisplayName(user?.displayName || user?.username || "Player");
@@ -53,6 +55,30 @@ export default function Customize() {
     }
   };
 
+  const selectCustomAvatar = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Choose an image file.");
+      return;
+    }
+    if (file.size > 1_500_000) {
+      setError("Choose an image smaller than 1.5 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setSelectedAvatar(reader.result);
+        setSaved(false);
+        setError("");
+      }
+    };
+    reader.onerror = () => setError("Unable to read that image.");
+    reader.readAsDataURL(file);
+  };
+
   return (
     <section className="h-full overflow-y-auto pb-6" data-node-id="423:2672">
       <div className="relative min-h-[735px] rounded-[8px] bg-[linear-gradient(197deg,#08122e_17%,rgba(43,51,89,.9)_46%,#13173b_81%)] px-4 py-6 sm:px-6 lg:px-8">
@@ -67,10 +93,21 @@ export default function Customize() {
 
         <div className="mx-auto max-w-[998px] pt-12 lg:pt-0">
           <div
-            className="flex h-[196px] items-center justify-center rounded-[8px] border border-[#2967a1] bg-[#0a1325]/70"
+            className="relative flex h-[196px] items-center justify-center rounded-[8px] border border-[#2967a1] bg-[#0a1325]/70"
             style={{ backgroundImage: `linear-gradient(rgba(22,43,82,.5), rgba(13,27,58,.7)), url(${currentBackground.source})`, backgroundSize: "cover", backgroundPosition: "center" }}
           >
-            <img alt={`${currentAvatar.label} avatar preview`} src={currentAvatar.source} className="h-[150px] w-[150px] rounded-full object-cover" />
+            <div className="relative">
+              <img alt={`${currentAvatar.label} avatar preview`} src={currentAvatar.source} className="h-[150px] w-[150px] rounded-full object-cover" />
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute bottom-2 right-[-12px] flex h-11 w-11 items-center justify-center rounded-full border-4 border-[#0a1325] bg-[#2746a6] text-white shadow-lg transition hover:bg-[#3960cf] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8db0ff]"
+                aria-label="Upload a custom profile photo"
+                title="Upload a custom profile photo"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {user?.role === "student" && (
@@ -89,6 +126,7 @@ export default function Customize() {
               <>
                 <div className="text-[18px] font-medium text-white">CHOOSE AVATAR</div>
                 <div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-5">
+                  <input ref={avatarInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={selectCustomAvatar} className="hidden" />
                   {avatars.map((avatar) => (
                     <button key={avatar.id} type="button" onClick={() => { setSelectedAvatar(avatar.id); setSaved(false); }} className={`relative flex h-[112px] items-center justify-center rounded-[7px] border p-2 transition ${selectedAvatar === avatar.id ? "border-[#6a9eff] bg-[#2b3359]" : "border-transparent bg-[rgba(43,51,89,.9)] hover:border-[#6a9eff]/60"}`} aria-pressed={selectedAvatar === avatar.id}>
                       <img alt={avatar.label} src={avatar.source} className="h-[104px] w-[104px] rounded-full object-cover" />

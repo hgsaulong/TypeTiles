@@ -72,6 +72,31 @@ export const SENTENCE_BANK = {
     "Respect company policies and uphold ethical standards daily.",
     "Time management skills help maintain a good work-life balance.",
   ],
+  medical: [
+    "The doctor examined the patient to identify the cause of the fever.",
+    "The nurse checked the patient's heartbeat and recorded the pulse.",
+    "The clinic provides treatment for patients with common health conditions.",
+    "The surgeon explained the risks of surgery before obtaining consent.",
+    "The laboratory analyzed the blood specimen for signs of infection.",
+    "The patient received a prescription for medicine to manage the symptoms.",
+    "The hospital prepared an ambulance for the medical emergency.",
+    "Proper nutrition and regular exercise help prevent chronic diseases.",
+    "The radiology department completed the examination to identify the fracture.",
+    "The nurse applied a bandage to the wound and monitored the patient's recovery.",
+  ],
+
+  legal: [
+    "The lawyer prepared the legal documents before the court hearing.",
+    "The judge reviewed the evidence before delivering the final verdict.",
+    "The witness provided clear testimony during the criminal trial.",
+    "The attorney examined the contract to verify each clause.",
+    "The defendant submitted an appeal challenging the court's judgment.",
+    "The notary verified the signature before approving the affidavit.",
+    "The plaintiff filed a complaint against the company for breach of agreement.",
+    "The court reviewed the petition concerning child custody and parental rights.",
+    "The parties reached a settlement through mediation without proceeding to trial.",
+    "The judge applied the relevant statute to determine legal liability.",
+  ],
 } as const;
 
 export function getCategorySentences(category: string): readonly string[] {
@@ -82,4 +107,8 @@ export function getCategorySentences(category: string): readonly string[] {
 
 export function practiceFormatLabel(format?: string): string {
   return format === "full-sentence" ? "Full Sentence" : "Word / Phrase";
+}
+
+export function getSentencesForCategory(category: string): readonly string[] {
+  return getCategorySentences(category);
 }

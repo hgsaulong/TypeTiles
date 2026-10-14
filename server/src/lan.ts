@@ -9,11 +9,13 @@ import { sessionEvents } from "./sessionEvents.js";
 const MAX_PLAYERS = 8;
 const COUNTDOWN_DELAY_MS = 3000;
 const SUPPORTED_ROUND_TIMES = [30, 60, 90] as const;
+const BACKGROUNDS = new Set(["blues", "volts", "office", "city"]);
 
 type ClassroomMatchConfig = {
   wordSet: WordCategory;
   difficulty: "Easy" | "Normal" | "Hard";
   roundTime: (typeof SUPPORTED_ROUND_TIMES)[number];
+  background: string;
 };
 
 type ClientMessage = {
@@ -31,6 +33,7 @@ type ClientMessage = {
   difficulty?: string;
   wordSet?: string;
   roundTime?: number;
+  background?: string;
 };
 
 type Player = {
@@ -126,6 +129,74 @@ function getStudentResults(room: Room) {
     .sort((left, right) => right.score - left.score || right.wpm - left.wpm || right.accuracy - left.accuracy);
 }
 
+async function persistClassroomResults(
+  room: Room,
+  results: ReturnType<typeof getStudentResults>,
+) {
+  if (!room.dbMatchId) return;
+
+  const db = getDatabase();
+  for (const [index, result] of results.entries()) {
+    if (result.userId === undefined) continue;
+
+    await db.run(
+      `UPDATE match_participants
+       SET score = ?, wpm = ?, accuracy = ?, completed_words = ?, end_reason = ?, remaining_lives = ?, position = ?, error_rate = ?
+       WHERE match_id = ? AND user_id = ?`,
+      [
+        result.score,
+        result.wpm,
+        result.accuracy,
+        result.completedWords,
+        result.finished ? (result.lives === 0 ? "health" : "time") : null,
+        result.lives,
+        index + 1,
+        result.completedWords === 0 && result.accuracy === 0 ? 0 : 100 - result.accuracy,
+        room.dbMatchId,
+        result.userId,
+      ],
+    );
+  }
+
+  await db.run(
+    "UPDATE matches SET status = 'completed', ended_at = CURRENT_TIMESTAMP WHERE id = ?",
+    [room.dbMatchId],
+  );
+}
+
+async function getResultsForFinalization(
+  room: Room,
+  liveResults: ReturnType<typeof getStudentResults>,
+) {
+  if (!room.dbMatchId) return liveResults;
+
+  const savedParticipants = await getDatabase().all(
+    `SELECT mp.user_id, mp.score, mp.wpm, mp.accuracy, mp.completed_words, mp.remaining_lives,
+            mp.end_reason, u.username, u.display_name
+     FROM match_participants mp JOIN users u ON u.id = mp.user_id
+     WHERE mp.match_id = ? AND mp.user_id <> ? AND u.role = 'student'`,
+    [room.dbMatchId, room.ownerUserId],
+  );
+  const liveByUserId = new Map(liveResults.map((result) => [result.userId, result]));
+
+  return savedParticipants
+    .map((participant) => {
+      const liveResult = liveByUserId.get(participant.user_id as number);
+      return liveResult || {
+        userId: participant.user_id as number,
+        username: participant.username,
+        displayName: participant.display_name || participant.username,
+        score: Number(participant.score) || 0,
+        wpm: Number(participant.wpm) || 0,
+        accuracy: Number(participant.accuracy) || 0,
+        lives: Number.isInteger(participant.remaining_lives) ? participant.remaining_lives : 3,
+        completedWords: Number(participant.completed_words) || 0,
+        finished: participant.end_reason !== null,
+      };
+    })
+    .sort((left, right) => right.score - left.score || right.wpm - left.wpm || right.accuracy - left.accuracy);
+}
+
 function makeRoomCode() {
   let code = "";
   do {
@@ -137,10 +208,28 @@ function makeRoomCode() {
 async function createDatabaseMatch(message: ClientMessage) {
   const db = getDatabase();
   const result = await db.run(
-    `INSERT INTO matches (mode, difficulty, round_time, word_set, status) VALUES (?, ?, ?, ?, ?)`,
-    [message.mode || "LAN Match", message.difficulty || "Normal", message.roundTime || 90, message.wordSet || "General", "active"],
+    `INSERT INTO matches (mode, difficulty, round_time, word_set, background, status) VALUES (?, ?, ?, ?, ?, ?)`,
+    [message.mode || "LAN Match", message.difficulty || "Normal", message.roundTime || 90, message.wordSet || "General", message.background || "blues", "active"],
   );
   return result.lastID;
+}
+
+async function persistRoomConfig(room: Room) {
+  if (!room.dbMatchId) return;
+
+  await getDatabase().run(
+    `UPDATE matches
+     SET mode = ?, word_set = ?, difficulty = ?, round_time = ?, background = ?
+     WHERE id = ?`,
+    [
+      room.mode,
+      room.wordSet,
+      room.difficulty,
+      room.roundTime,
+      room.matchConfig.background,
+      room.dbMatchId,
+    ],
+  );
 }
 
 async function authenticatePlayer(token: string | undefined) {
@@ -255,6 +344,7 @@ export function attachLanServer(server: import("http").Server) {
             wordSet: message.wordSet || "General",
             difficulty: message.difficulty || "Normal",
             roundTime: message.roundTime || 90,
+            background: message.background || "blues",
           });
           if (!matchConfig) {
             send(socket, { type: "error", message: "Invalid classroom match configuration." });
@@ -269,11 +359,17 @@ export function attachLanServer(server: import("http").Server) {
           player.role = identity.role;
           const room: Room = {
             code: makeRoomCode(),
-            dbMatchId: await createDatabaseMatch(message),
+            dbMatchId: await createDatabaseMatch({
+              ...message,
+              wordSet: matchConfig.wordSet,
+              difficulty: matchConfig.difficulty,
+              roundTime: matchConfig.roundTime,
+              background: matchConfig.background,
+            }),
             mode: message.mode || "LAN Match",
-            difficulty: message.difficulty || "Normal",
-            wordSet: message.wordSet || "General",
-            roundTime: message.roundTime || 90,
+            difficulty: matchConfig.difficulty,
+            wordSet: matchConfig.wordSet,
+            roundTime: matchConfig.roundTime,
             started: false,
             ownerUserId: identity.userId,
             matchConfig,
@@ -371,7 +467,9 @@ export function attachLanServer(server: import("http").Server) {
           room.wordSet = matchConfig.wordSet;
           room.difficulty = matchConfig.difficulty;
           room.roundTime = matchConfig.roundTime;
+          room.matchConfig.background = matchConfig.background;
           room.wordSequence = undefined;
+          await persistRoomConfig(room);
           broadcast(room);
         } else if (message.type === "cancel_room") {
           const identity = await authenticatePlayer(message.token);
@@ -387,6 +485,12 @@ export function attachLanServer(server: import("http").Server) {
           rooms.delete(room.code);
           for (const participant of room.players.values()) participant.socket.close();
         } else if (message.type === "leave_room") {
+          if (player.isHost && room.started && room.dbMatchId) {
+            const results = await getResultsForFinalization(room, getStudentResults(room));
+            if (results.some((result) => result.score !== 0 || result.wpm !== 0 || result.accuracy !== 0 || result.finished)) {
+              await persistClassroomResults(room, results);
+            }
+          }
           leaveRoom(player);
         } else if (message.type === "ready") {
           player.ready = true;
@@ -406,6 +510,7 @@ export function attachLanServer(server: import("http").Server) {
             return;
           }
           room.started = true;
+          await persistRoomConfig(room);
           room.startAt = Date.now() + COUNTDOWN_DELAY_MS;
           room.wordSequence = createWordSequence(room.matchConfig);
           for (const participant of room.players.values()) {
@@ -437,6 +542,24 @@ export function attachLanServer(server: import("http").Server) {
           }
 
           player.performance = { score, wpm, accuracy, lives, completedWords, finished };
+          if (room.dbMatchId && player.userId) {
+            await getDatabase().run(
+              `UPDATE match_participants
+               SET score = ?, wpm = ?, accuracy = ?, completed_words = ?, remaining_lives = ?, end_reason = ?, error_rate = ?
+               WHERE match_id = ? AND user_id = ?`,
+              [
+                score,
+                wpm,
+                accuracy,
+                completedWords,
+                lives,
+                finished ? (lives === 0 ? "health" : "time") : null,
+                completedWords === 0 && accuracy === 0 ? 0 : 100 - accuracy,
+                room.dbMatchId,
+                player.userId,
+              ],
+            );
+          }
           broadcastStandings(room);
 
           const students = [...room.players.values()].filter(
@@ -448,7 +571,8 @@ export function attachLanServer(server: import("http").Server) {
             students.every((student) => student.performance?.finished === true)
           ) {
             room.classroomResultsSent = true;
-            const players = getStudentResults(room);
+            const players = await getResultsForFinalization(room, getStudentResults(room));
+            await persistClassroomResults(room, players);
             for (const participant of room.players.values()) {
               send(participant.socket, { type: "classroom_results", roomCode: room.code, players });
             }
@@ -471,16 +595,17 @@ export function attachLanServer(server: import("http").Server) {
   return webSocketServer;
 }
 
-function normalizeMatchConfig(input: { wordSet?: string; difficulty?: string; roundTime?: number }): ClassroomMatchConfig | null {
+function normalizeMatchConfig(input: { wordSet?: string; difficulty?: string; roundTime?: number; background?: string }): ClassroomMatchConfig | null {
   const difficultyKey = input.difficulty ? getDifficultyKey(input.difficulty) : null;
   const wordSet = input.wordSet ? getWordCategory(input.wordSet) : null;
   const roundTime = input.roundTime;
-  if (!difficultyKey || !wordSet || !SUPPORTED_ROUND_TIMES.includes(roundTime as (typeof SUPPORTED_ROUND_TIMES)[number])) return null;
+  if (!difficultyKey || !wordSet || !SUPPORTED_ROUND_TIMES.includes(roundTime as (typeof SUPPORTED_ROUND_TIMES)[number]) || !BACKGROUNDS.has(input.background || "blues")) return null;
 
   return {
     wordSet,
     difficulty: difficultyKey === "easy" ? "Easy" : difficultyKey === "normal" ? "Normal" : "Hard",
     roundTime: roundTime as (typeof SUPPORTED_ROUND_TIMES)[number],
+    background: input.background || "blues",
   };
 }
 

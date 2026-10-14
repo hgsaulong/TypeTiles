@@ -68,9 +68,9 @@ test("sentence practice: additive migration, API validation and durable history"
     const response = await fetch(`${base}/users/history`, { headers });
     assert.equal(response.status, 200);
     const { history } = await response.json();
-    assert.equal(history.length, 6);
+    assert.equal(history.length, Object.keys(SENTENCE_BANK).length);
     assert(history.every((row: { practice_format: string }) => row.practice_format === "full-sentence"));
-    assert.equal((await getDatabase().get("SELECT games_played FROM user_stats WHERE user_id = ?", user.id)).games_played, 6);
+    assert.equal((await getDatabase().get("SELECT games_played FROM user_stats WHERE user_id = ?", user.id)).games_played, Object.keys(SENTENCE_BANK).length);
     assert.equal((await getDatabase().get("SELECT practice_format FROM matches WHERE id = 1")).practice_format, "word-phrase");
   } finally {
     if (server.listening) await new Promise<void>((resolve) => server.close(() => resolve()));
