@@ -33,6 +33,7 @@ type Props = {
   matchId?: number;
   wordSequence?: string[];
   startAt?: number;
+  backgroundId?: string;
 };
 
 export default function Game({
@@ -43,6 +44,7 @@ export default function Game({
   matchId,
   wordSequence,
   startAt,
+  backgroundId,
 }: Props) {
   const { user } = usePlayerAuth();
   const navigate = useNavigate();
@@ -220,6 +222,10 @@ export default function Game({
         score: result.score,
         wpm: result.wpm,
         accuracy: result.accuracy,
+        errorRate: result.errorRate,
+        completedWords: result.completedWords,
+        endReason: result.endReason,
+        remainingLives: result.remainingLives,
       });
 
       navigate("/app/results", {
@@ -281,7 +287,7 @@ export default function Game({
             mode={mode}
             roomCode={roomCode}
             matchConfig={matchConfig}
-            backgroundImage={getProfileBackground(user?.background).source}
+            backgroundImage={getProfileBackground(backgroundId || user?.background).source}
             onRestart={mode === "solo" ? restartMatch : undefined}
             onExit={mode === "solo" ? exitMatch : undefined}
             wordSequence={wordSequence}

@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { PLAYER_TOKEN_KEY } from "../lib/playerApi";
 import { usePlayerAuth } from "../lib/PlayerAuthContext";
 import { WORD_CATEGORIES, type WordCategory } from "../words";
+import { PROFILE_BACKGROUNDS, type ProfileBackgroundId } from "../lib/profileAssets";
 
 type Player = {
   id: string;
@@ -19,6 +20,7 @@ type ClassroomMatchConfig = {
   wordSet: WordCategory;
   difficulty: "Easy" | "Normal" | "Hard";
   roundTime: 30 | 60 | 90;
+  background: ProfileBackgroundId;
 };
 
 type RoomState = {
@@ -312,6 +314,7 @@ export default function Lobby() {
           matchConfig: room.matchConfig,
           wordSequence,
           startAt: room.startAt,
+          background: room.matchConfig.background,
         },
       });
     };
@@ -404,6 +407,7 @@ export default function Lobby() {
       difficulty: "Normal",
       wordSet: "General",
       roundTime: 90,
+      background: "blues",
     });
   };
 
@@ -433,6 +437,9 @@ export default function Lobby() {
       roundTime:
         config.roundTime ||
         room.matchConfig.roundTime,
+      background:
+        config.background ||
+        room.matchConfig.background,
     });
   };
 
@@ -749,7 +756,7 @@ export default function Lobby() {
                   Match Settings
                 </div>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="mt-3 grid gap-3 sm:grid-cols-4">
                   <label className="text-xs text-white/70">
                     Category
 
@@ -853,6 +860,20 @@ export default function Lobby() {
                           </option>
                         )
                       )}
+                    </select>
+                  </label>
+
+                  <label className="text-xs text-white/70">
+                    Background
+                    <select
+                      value={room.matchConfig.background}
+                      disabled={!currentPlayer?.isHost || room.started}
+                      onChange={(event) => updateMatchConfig({ background: event.target.value as ProfileBackgroundId })}
+                      className="mt-1 w-full rounded bg-[#d7d7df] px-2 py-2 text-sm text-[#161a3b] disabled:opacity-70"
+                    >
+                      {Object.entries(PROFILE_BACKGROUNDS).map(([id, background]) => (
+                        <option key={id} value={id}>{background.label}</option>
+                      ))}
                     </select>
                   </label>
                 </div>

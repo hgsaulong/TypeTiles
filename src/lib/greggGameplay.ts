@@ -1,6 +1,6 @@
 import type { GreggSubmode } from "./mockData";
 
-// Tune after manual gameplay testing; applies only to Solo full-sentence Gregg.
+// Full sentences need more time because players type spaces and punctuation too.
 export const FULL_SENTENCE_SPEED_MULTIPLIER = 0.5;
 
 export function canPreviewGreggCrops(): boolean {

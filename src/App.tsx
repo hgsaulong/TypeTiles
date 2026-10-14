@@ -32,6 +32,7 @@ function GameRoute() {
     matchId?: number;
     wordSequence?: string[];
     startAt?: number;
+    background?: string;
   } | null;
 
   return (
@@ -43,6 +44,7 @@ function GameRoute() {
       matchId={state?.matchId}
       wordSequence={state?.wordSequence}
       startAt={state?.startAt}
+      backgroundId={state?.background}
     />
   );
 }
@@ -71,8 +73,8 @@ function StudentWordBankRoute() {
   return user?.role === "student" ? <WordBank /> : <Navigate to="/app" replace />;
 }
 
-const DevGreggCropEditor = import.meta.env.DEV ? lazy(() => import("./dev/GreggCropEditor")) : null;
-const DevGreggExercise6Pilot = import.meta.env.DEV ? lazy(() => import("./dev/GreggExercise6Pilot")) : null;
+const DevGreggCropEditor = import.meta.env.DEV ? lazy(() => import("./data/dev/GreggCropEditor")) : null;
+const DevGreggExercise6Pilot = import.meta.env.DEV ? lazy(() => import("./data/dev/GreggExercise6Pilot")) : null;
 
 export default function App() {
   return (

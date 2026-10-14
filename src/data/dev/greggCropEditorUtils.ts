@@ -1,4 +1,4 @@
-import { isValidGreggCrop, type GreggCropMapping, type GreggCropRectangle } from "../data/greggCropMappings";
+import { isValidGreggCrop, type GreggCropMapping, type GreggCropRectangle } from "../greggCropMappings";
 
 export type ImageSize = { width: number; height: number };
 export type PixelPoint = { x: number; y: number };

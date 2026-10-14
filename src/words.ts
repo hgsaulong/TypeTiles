@@ -8,6 +8,7 @@ export {
   getWordsForDifficulty,
 } from "../server/src/wordBank";
 export type { GreggPrompt, WordCategory } from "../server/src/wordBank";
+export { SENTENCE_BANK, getSentencesForCategory } from "../server/src/sentenceBank";
 
 import { GREGG_PROMPTS, WORD_BANK } from "../server/src/wordBank";
 

@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCheck, Star, Zap, type LucideIcon } from "lucide-react";
+import { CheckCheck, ChevronDown, Star, Zap, type LucideIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { mockMatchConfig, type GreggSubmode } from "../lib/mockData";
-import { resolveGreggSubmode } from "../lib/greggGameplay";
-import { GreggModeSelector } from "../components/GreggModeSelector";
-import { PracticeFormatSelector } from "../components/PracticeFormatSelector";
+import { canPreviewGreggCrops, resolveGreggSubmode } from "../lib/greggGameplay";
 import { usePlayerAuth } from "../lib/PlayerAuthContext";
 import { getPlayerHistory, getPlayerRank, type MatchHistoryRow, type PlayerStats } from "../lib/playerApi";
 import { getProfileAvatar, getProfileBackground } from "../lib/profileAssets";
@@ -17,13 +15,18 @@ const categories = [
   { label: "RECORDS", image: `${assetRoot}/image6.png`, dimmed: true },
   { label: "ACCOUNTING", image: `${assetRoot}/image7.png`, dimmed: true },
   { label: "TECHNOLOGY", image: `${assetRoot}/image8.png`, dimmed: true },
-  { label: "GENERAL", solid: true },
-  { label: "STENOGRAPHY", solid: true },
-  { label: "COMING SOON", solid: true, unavailable: true },
-  { label: "COMING SOON", solid: true, unavailable: true },
+  { label: "GENERAL",image: `${assetRoot}/general_bg.jpg`, dimmed: true },
+  { label: "STENOGRAPHY", image: `${assetRoot}/stenography_bg.jpg`, dimmed: true },
+  { label: "MEDICAL", image: `${assetRoot}/medical_bg.jpg`, dimmed: true },
+  { label: "LEGAL", image: `${assetRoot}/legal_bg.jpg`, dimmed: true },
 ] as const;
 
 const difficultyOptions = ["Easy", "Normal", "Hard"] as const;
+const durationOptions = [30, 60, 90] as const;
+const fallingTextOptions = [
+  { value: "word-phrase", label: "Word / Phrase" },
+  { value: "full-sentence", label: "Full Sentence" },
+] as const;
 
 type CategoryLabel = (typeof categories)[number]["label"];
 type PlayableCategory = Exclude<CategoryLabel, "COMING SOON">;
@@ -60,6 +63,8 @@ export default function Dashboard() {
   ] as const;
   const [selectedCategory, setSelectedCategory] = useState<PlayableCategory | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLabel>("Normal");
+  const [selectedDuration, setSelectedDuration] = useState<(typeof durationOptions)[number]>(90);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [comingSoonNote, setComingSoonNote] = useState(false);
   const comingSoonTimer = useRef<number | undefined>(undefined);
 
@@ -76,8 +81,10 @@ export default function Dashboard() {
   };
 
   const openCategoryPicker = () => {
-    setSelectedCategory((current) => current ?? "GENERAL");
+    setSelectedCategory((current) => current ?? "CORPORATE");
     setSelectedDifficulty("Normal");
+    setSelectedDuration(90);
+    setCategoryDropdownOpen(false);
   };
 
   const handleStartFromCategory = () => {
@@ -90,6 +97,7 @@ export default function Dashboard() {
           wordSet: selectedCategory,
           mode: "Solo Practice",
           difficulty: selectedDifficulty,
+          roundTime: selectedDuration,
           opponents: [],
           ...(selectedCategory === "STENOGRAPHY" ? { greggSubmode: resolveGreggSubmode(greggSubmode) } : { practiceFormat }),
         },
@@ -98,6 +106,9 @@ export default function Dashboard() {
   };
 
   const categoryPreview = categories.find((category) => category.label === selectedCategory);
+  const selectedCategoryLabel = selectedCategory
+    ? selectedCategory.charAt(0) + selectedCategory.slice(1).toLowerCase()
+    : "";
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden pb-4">
       <h1 className="shrink-0 px-1 text-[1.95rem] font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">Welcome to Type Tiles!</h1>
@@ -231,76 +242,119 @@ export default function Dashboard() {
 
       {selectedCategory ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-[2px]">
-          <div className="scrollbar-hidden max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-[8px] border border-[#5da3c5] bg-[#13173b] shadow-[0_24px_60px_rgba(0,0,0,0.55)]">
-            <div className="h-[116px] w-full overflow-hidden">
+          <div className="scrollbar-hidden max-h-[92vh] w-full max-w-[680px] overflow-y-auto rounded-[12px] border border-[#5da3c5] bg-[#13173b] shadow-[0_24px_60px_rgba(0,0,0,0.55)]">
+            <div className="h-[84px] w-full overflow-hidden">
               <img alt="" className="h-full w-full object-cover" src={categoryPreview && "image" in categoryPreview ? categoryPreview.image : `${assetRoot}/image5.png`} />
             </div>
 
-            <div className="px-7 py-6">
+            <div className="px-8 py-3">
               <div className="flex items-center gap-3 text-white/90">
-                <div className="h-px flex-1 bg-white/70" />
-                <span className="font-['Roboto'] text-[1.85rem] font-bold tracking-[0.03em]">CATEGORY</span>
-                <div className="h-px flex-1 bg-white/70" />
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {categories.map((category, index) => {
-                  const unavailable = "unavailable" in category && category.unavailable;
-                  const selected = !unavailable && category.label === selectedCategory;
-
-                  return (
-                    <button
-                      key={`${category.label}-${index}`}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => {
-                        if (unavailable) {
-                          showComingSoonNote();
-                          return;
-                        }
-                        setSelectedCategory(category.label as PlayableCategory);
-                      }}
-                      className={`min-h-[44px] rounded-[6px] border px-2 py-2 text-center font-['Concert_One'] text-sm transition sm:text-base ${unavailable ? "border-white/20 bg-white/10 text-white/55 hover:border-sky-300/60" : selected ? "border-[#5da3c5] bg-[#0898dd] text-white ring-2 ring-sky-300/70" : "border-[#5da3c5] bg-white text-[#0898dd] hover:bg-sky-50"}`}
-                    >
-                      {category.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {selectedCategory === "STENOGRAPHY" ? <GreggModeSelector value={greggSubmode} onChange={setGreggSubmode} /> : <PracticeFormatSelector value={practiceFormat} onChange={setPracticeFormat} />}
-
-              <div className="mt-6 flex items-center gap-3 text-white/90">
-                <div className="h-px flex-1 bg-white/70" />
-                <span className="font-['Roboto'] text-[1.85rem] font-bold tracking-[0.03em]">DIFFICULTY</span>
+                <span className="whitespace-nowrap font-['Roboto'] text-[1.35rem] font-bold tracking-[0.02em]">CATEGORY</span>
                 <div className="h-px flex-1 bg-white/70" />
               </div>
 
-              <div className="mt-5 grid grid-cols-3 gap-3">
+              <div className="relative mt-3">
+                <button
+                  type="button"
+                  aria-expanded={categoryDropdownOpen}
+                  onClick={() => setCategoryDropdownOpen((open) => !open)}
+                  className="flex min-h-[38px] w-full items-center justify-between rounded-[8px] border-[3px] border-[#76a9bc] bg-[#343c83] px-4 text-center font-semibold text-white/85 transition hover:border-sky-300"
+                >
+                  <span className="flex-1">{selectedCategoryLabel}</span>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`h-5 w-5 shrink-0 transition-transform ${categoryDropdownOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {categoryDropdownOpen ? (
+                  <div className="scrollbar-hidden absolute left-0 right-0 top-[calc(100%+4px)] z-10 max-h-60 overflow-y-auto rounded-[8px] border-2 border-[#76a9bc] bg-[#343c83] p-1 shadow-[0_12px_24px_rgba(0,0,0,0.35)]">
+                    {categories.map((category) => (
+                      <button
+                        key={category.label}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(category.label);
+                          setCategoryDropdownOpen(false);
+                        }}
+                        className={`block w-full rounded-[6px] px-3 py-1.5 text-left font-semibold text-white/85 transition hover:bg-[#252d70] ${category.label === selectedCategory ? "bg-[#151c58]" : ""}`}
+                      >
+                        {category.label.charAt(0) + category.label.slice(1).toLowerCase()}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-4 flex items-center gap-3 text-white/90">
+                <span className="whitespace-nowrap font-['Roboto'] text-[1.35rem] font-bold tracking-[0.02em]">DIFFICULTY</span>
+                <div className="h-px flex-1 bg-white/70" />
+              </div>
+
+              <div className="mt-2 grid grid-cols-3 gap-3">
                 {difficultyOptions.map((difficulty) => (
                   <button
                     key={difficulty}
                     type="button"
                     onClick={() => setSelectedDifficulty(difficulty)}
-                    className={`rounded-[8px] border px-2 py-2 text-lg font-bold transition ${selectedDifficulty === difficulty ? "border-[#5da3c5] bg-[#0898dd] text-white" : "border-white bg-white text-[#0898dd]"}`}
+                    className={`min-h-[38px] rounded-[8px] border-[3px] px-2 py-1 text-base font-bold transition ${selectedDifficulty === difficulty ? "border-[#76a9bc] bg-[#343c83] text-white" : "border-[#76a9bc] bg-[#080f47] text-white/85"}`}
                   >
                     {difficulty}
                   </button>
                 ))}
               </div>
 
-              <div className="mt-6 flex justify-center gap-3">
+              <div className="mt-4 flex items-center gap-3 text-white/90">
+                <span className="whitespace-nowrap font-['Roboto'] text-[1.35rem] font-bold tracking-[0.02em]">FALLING TEXT TYPE</span>
+                <div className="h-px flex-1 bg-white/70" />
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                {fallingTextOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={selectedCategory === "STENOGRAPHY" && option.value === "word-phrase" && !canPreviewGreggCrops()}
+                    aria-pressed={(selectedCategory === "STENOGRAPHY" ? greggSubmode : practiceFormat) === option.value}
+                    onClick={() => selectedCategory === "STENOGRAPHY" ? setGreggSubmode(option.value) : setPracticeFormat(option.value)}
+                    className={`min-h-[38px] rounded-[8px] border-[3px] px-2 py-1 text-sm font-bold transition sm:text-base disabled:cursor-not-allowed disabled:opacity-50 ${(selectedCategory === "STENOGRAPHY" ? greggSubmode : practiceFormat) === option.value ? "border-[#76a9bc] bg-[#343c83] text-white" : "border-[#76a9bc] bg-[#080f47] text-white/85"}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {(selectedCategory === "STENOGRAPHY" ? greggSubmode : practiceFormat) === "full-sentence" ? <p className="mt-2 px-1 text-xs text-white/45">Full sentence falls slower. Type the complete sentence, including spaces and punctuation.</p> : null}
+
+              <div className="mt-3 flex items-center gap-3 text-white/90">
+                <span className="whitespace-nowrap font-['Roboto'] text-[1.35rem] font-bold tracking-[0.02em]">DURATION</span>
+                <div className="h-px flex-1 bg-white/70" />
+              </div>
+
+              <div className="mt-2 grid grid-cols-3 gap-3">
+                {durationOptions.map((duration) => (
+                  <button
+                    key={duration}
+                    type="button"
+                    onClick={() => setSelectedDuration(duration)}
+                    className={`min-h-[38px] rounded-[8px] border-[3px] px-2 py-1 text-base font-bold transition ${selectedDuration === duration ? "border-[#76a9bc] bg-[#343c83] text-white" : "border-[#76a9bc] bg-[#080f47] text-white/85"}`}
+                  >
+                    {duration}s
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 flex justify-center gap-3 pb-1">
                 <button
                   type="button"
                   onClick={handleStartFromCategory}
-                  className="order-1 rounded-[8px] border border-[#5da3c5] bg-white px-5 py-2 font-bold text-[#0898dd]"
+                  className="order-1 min-w-0 flex-1 rounded-[8px] border-[3px] border-[#76a9bc] bg-[#2389aa] px-4 py-2 font-bold text-white sm:min-w-[268px]"
                 >
                   Start Game
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedCategory(null)}
-                  className="order-2 rounded-[8px] border border-white/30 bg-white/10 px-5 py-2 text-white"
+                  className="order-2 min-w-0 flex-1 rounded-[8px] border-[3px] border-[#76a9bc] bg-transparent px-4 py-2 text-white sm:min-w-[268px]"
                 >
                   Cancel
                 </button>

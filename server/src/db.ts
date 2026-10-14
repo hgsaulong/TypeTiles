@@ -165,6 +165,22 @@ async function createTables(db: Database) {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
+  const participantColumns = await db.all<{ name: string }[]>("PRAGMA table_info(match_participants)");
+  const participantMigrations = [
+    ["completed_words", "INTEGER DEFAULT 0"],
+    ["error_rate", "REAL DEFAULT 0.0"],
+    ["end_reason", "TEXT"],
+    ["remaining_lives", "INTEGER DEFAULT 0"],
+  ] as const;
+  for (const [name, definition] of participantMigrations) {
+    if (!participantColumns.some((column) => column.name === name)) {
+      await db.exec(`ALTER TABLE match_participants ADD COLUMN ${name} ${definition}`);
+    }
+    const matchColumns = await db.all<{ name: string }[]>("PRAGMA table_info(matches)");
+    if (!matchColumns.some((column) => column.name === "background")) {
+      await db.exec("ALTER TABLE matches ADD COLUMN background TEXT DEFAULT 'blues'");
+    }
+  }
 
   // Match results/history table
   await db.exec(`

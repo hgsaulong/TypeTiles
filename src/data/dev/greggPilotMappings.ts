@@ -1,4 +1,4 @@
-import type { GreggCropMapping } from "../data/greggCropMappings";
+import type { GreggCropMapping } from "../greggCropMappings";
 
 // Manually exported data; pending is preserved and does not imply instructor verification.
 export const PENDING_GREGG_PILOT_MAPPINGS = [

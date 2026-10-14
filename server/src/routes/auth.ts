@@ -30,6 +30,7 @@ interface ProfileUpdateBody {
 }
 
 const AVATAR_IDS = new Set(["hani", "helen", "jacq", "kyla", "liscano"]);
+const CUSTOM_AVATAR_PATTERN = /^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/]+=*$/i;
 const BACKGROUND_IDS = new Set(["blues", "volts", "office", "city"]);
 
 // Register: pending account only; verification never creates a session.
@@ -148,7 +149,7 @@ router.put("/me/profile", authMiddleware, async (req: Request<{}, {}, ProfileUpd
       return res.status(400).json({ error: "Display name is required" });
     }
 
-    if (avatar !== undefined && !AVATAR_IDS.has(avatar)) {
+    if (avatar !== undefined && (!AVATAR_IDS.has(avatar) && (!CUSTOM_AVATAR_PATTERN.test(avatar) || avatar.length > 2_000_000))) {
       return res.status(400).json({ error: "Invalid avatar" });
     }
 
