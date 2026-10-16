@@ -7,10 +7,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 6,
     "answer": "In",
     "crop": {
-      "x": 22,
-      "y": 156,
-      "width": 196,
-      "height": 121
+      "x": 0,
+      "y": 69,
+      "width": 47,
+      "height": 13
     },
     "sequenceOrder": 1,
     "verification": "pending"
@@ -20,10 +20,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 6,
     "answer": "only",
     "crop": {
-      "x": 198,
-      "y": 159,
-      "width": 195,
-      "height": 151
+      "x": 54,
+      "y": 66,
+      "width": 54,
+      "height": 30
     },
     "sequenceOrder": 2,
     "verification": "pending"
@@ -33,10 +33,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 6,
     "answer": "three",
     "crop": {
-      "x": 400,
-      "y": 115,
-      "width": 144,
-      "height": 170
+      "x": 126,
+      "y": 50,
+      "width": 32,
+      "height": 44
     },
     "sequenceOrder": 3,
     "verification": "pending"
@@ -46,10 +46,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 6,
     "answer": "weeks",
     "crop": {
-      "x": 544,
-      "y": 155,
-      "width": 177,
-      "height": 173
+      "x": 173,
+      "y": 59,
+      "width": 47,
+      "height": 55
     },
     "sequenceOrder": 4,
     "verification": "pending"
@@ -59,10 +59,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 6,
     "answer": "we will",
     "crop": {
-      "x": 746,
-      "y": 162,
-      "width": 314,
-      "height": 130
+      "x": 240,
+      "y": 64,
+      "width": 90,
+      "height": 35
     },
     "sequenceOrder": 5,
     "verification": "pending"
@@ -72,10 +72,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 6,
     "answer": "begin",
     "crop": {
-      "x": 1067,
-      "y": 4,
-      "width": 335,
-      "height": 299
+      "x": 356,
+      "y": 1,
+      "width": 97,
+      "height": 101
     },
     "sequenceOrder": 6,
     "verification": "pending"
@@ -85,10 +85,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 6,
     "answer": "meeting",
     "crop": {
-      "x": 1402,
-      "y": 87,
-      "width": 408,
-      "height": 212
+      "x": 468,
+      "y": 45,
+      "width": 118,
+      "height": 50
     },
     "sequenceOrder": 7,
     "verification": "pending"
@@ -98,10 +98,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 6,
     "answer": "daily",
     "crop": {
-      "x": 1813,
-      "y": 43,
-      "width": 328,
-      "height": 271
+      "x": 599,
+      "y": 23,
+      "width": 108,
+      "height": 85
     },
     "sequenceOrder": 8,
     "verification": "pending"
@@ -139,8 +139,8 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "crop": {
       "x": 240,
       "y": 30,
-      "width": 55,
-      "height": 30
+      "width": 95,
+      "height": 35
     },
     "sequenceOrder": 3,
     "verification": "pending"
@@ -205,8 +205,8 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "crop": {
       "x": 724,
       "y": 27,
-      "width": 128,
-      "height": 33
+      "width": 167,
+      "height": 41
     },
     "sequenceOrder": 7,
     "verification": "pending"
@@ -438,10 +438,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 10,
     "answer": "I am",
     "crop": {
-      "x": 50,
-      "y": 60,
-      "width": 240,
-      "height": 134
+      "x": 7,
+      "y": 48,
+      "width": 74,
+      "height": 23
     },
     "sequenceOrder": 1,
     "verification": "pending"
@@ -451,10 +451,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 10,
     "answer": "highly",
     "crop": {
-      "x": 277,
-      "y": 84,
-      "width": 130,
-      "height": 114
+      "x": 95,
+      "y": 38,
+      "width": 38,
+      "height": 34
     },
     "sequenceOrder": 2,
     "verification": "pending"
@@ -464,10 +464,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 10,
     "answer": "pleased",
     "crop": {
-      "x": 425,
-      "y": 57,
-      "width": 299,
-      "height": 168
+      "x": 151,
+      "y": 36,
+      "width": 116,
+      "height": 40
     },
     "sequenceOrder": 3,
     "verification": "pending"
@@ -477,10 +477,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 10,
     "answer": "by",
     "crop": {
-      "x": 713,
-      "y": 22,
-      "width": 142,
-      "height": 158
+      "x": 280,
+      "y": 4,
+      "width": 34,
+      "height": 67
     },
     "sequenceOrder": 4,
     "verification": "pending"
@@ -490,10 +490,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 10,
     "answer": "the totally",
     "crop": {
-      "x": 851,
-      "y": 29,
-      "width": 344,
-      "height": 158
+      "x": 334,
+      "y": 19,
+      "width": 124,
+      "height": 51
     },
     "sequenceOrder": 5,
     "verification": "pending"
@@ -503,10 +503,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 10,
     "answer": "new",
     "crop": {
-      "x": 1205,
-      "y": 74,
-      "width": 141,
-      "height": 117
+      "x": 469,
+      "y": 47,
+      "width": 50,
+      "height": 19
     },
     "sequenceOrder": 6,
     "verification": "pending"
@@ -516,10 +516,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 10,
     "answer": "look",
     "crop": {
-      "x": 1333,
-      "y": 53,
-      "width": 326,
-      "height": 176
+      "x": 527,
+      "y": 41,
+      "width": 119,
+      "height": 26
     },
     "sequenceOrder": 7,
     "verification": "pending"
@@ -529,10 +529,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 10,
     "answer": "of our",
     "crop": {
-      "x": 1687,
-      "y": 74,
-      "width": 172,
-      "height": 106
+      "x": 659,
+      "y": 45,
+      "width": 74,
+      "height": 21
     },
     "sequenceOrder": 8,
     "verification": "pending"
@@ -542,10 +542,10 @@ export const PENDING_GREGG_PILOT_MAPPINGS = [
     "exerciseNumber": 10,
     "answer": "store",
     "crop": {
-      "x": 1876,
-      "y": 46,
-      "width": 272,
-      "height": 141
+      "x": 747,
+      "y": 33,
+      "width": 122,
+      "height": 36
     },
     "sequenceOrder": 9,
     "verification": "pending"

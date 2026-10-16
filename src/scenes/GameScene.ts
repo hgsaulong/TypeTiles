@@ -63,7 +63,7 @@ export default class GameScene extends Phaser.Scene {
 
   // === TUNING ===
   private readonly WORD_FONT_SIZE = 22;
-  private readonly TYPED_FONT_SIZE = 22;
+  private readonly TYPED_FONT_SIZE = 26;
   private readonly TILE_HEIGHT = 52;
   private readonly TILE_PADDING_X = 50;
   private fallSpeedPxPerSec: number = GameScene.DIFFICULTY_CONFIG.normal.fallSpeed;
@@ -437,7 +437,7 @@ export default class GameScene extends Phaser.Scene {
 
   private layoutSentenceInput(): void {
     const currentText = this.typedText;
-    this.typedDisplay.setFontSize(this.scale.width < 480 ? 14 : 18)
+    this.typedDisplay.setFontSize(this.scale.width < 480 ? 20 : 24)
       .setWordWrapWidth(Math.max(1, this.scale.width - 48), true).setOrigin(0.5, 0);
     let height = 0;
     for (const sentence of this.wordDeck) {
@@ -488,7 +488,7 @@ export default class GameScene extends Phaser.Scene {
   private layoutGreggInput(): void {
     const width = Math.max(1, this.scale.width - 48);
     const currentText = this.typedText;
-    this.typedDisplay.setFontSize(this.scale.width < 480 ? 14 : 18)
+    this.typedDisplay.setFontSize(this.scale.width < 480 ? 20 : 24)
       .setWordWrapWidth(width, true).setOrigin(0.5, 0);
     if (this.isGreggCropPilot) this.typedDisplay.setBackgroundColor("#102441");
     // Reserve enough space for any sentence so the falling boundary does not move while typing.
