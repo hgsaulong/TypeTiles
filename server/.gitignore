@@ -2,6 +2,8 @@ node_modules/
 dist/
 .env
 .env.local
+supabase-root.crt
+prod-ca-2021.crt
 data/
 *.log
 .DS_Store

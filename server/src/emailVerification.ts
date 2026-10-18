@@ -1,7 +1,6 @@
 import { createHmac, randomBytes, randomInt, timingSafeEqual } from "crypto";
-import sqlite3 from "sqlite3";
-import { open, type Database } from "sqlite";
-import { getDatabase } from "./db.js";
+import { databaseTransaction as transaction } from "./db.js";
+import type { ApplicationDatabase as Database } from "./databaseTypes.js";
 import { hashPassword } from "./auth.js";
 import { normalizeRecoveryEmail, validResetPassword } from "./passwordReset.js";
 import { sendEmailVerificationCode } from "./email.js";
@@ -45,22 +44,6 @@ function hmac(value: string): string {
   return createHmac("sha256", verificationSecret()).update(value).digest("hex");
 }
 
-async function transaction<T>(work: (db: Database) => Promise<T>): Promise<T> {
-  const file = await getDatabase().get<{ file: string }>("SELECT file FROM pragma_database_list WHERE name='main'");
-  if (!file?.file) throw new Error("Email verification requires a file-backed database.");
-  const db = await open({ filename: file.file, driver: sqlite3.Database });
-  try {
-    await db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; BEGIN IMMEDIATE");
-    try {
-      const result = await work(db);
-      await db.exec("COMMIT");
-      return result;
-    } catch (error) {
-      await db.exec("ROLLBACK");
-      throw error;
-    }
-  } finally { await db.close(); }
-}
 
 type User = { id: number; email: string; email_verified: number; is_banned: number };
 type Delivery = { id: number; to: string; code: string };

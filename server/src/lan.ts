@@ -174,7 +174,7 @@ async function getResultsForFinalization(
     `SELECT mp.user_id, mp.score, mp.wpm, mp.accuracy, mp.completed_words, mp.remaining_lives,
             mp.end_reason, u.username, u.display_name
      FROM match_participants mp JOIN users u ON u.id = mp.user_id
-     WHERE mp.match_id = ? AND mp.user_id <> ? AND u.role = 'student'`,
+     WHERE mp.match_id = ? AND mp.user_id <> ? AND u.role IN ('student', 'player')`,
     [room.dbMatchId, room.ownerUserId],
   );
   const liveByUserId = new Map(liveResults.map((result) => [result.userId, result]));

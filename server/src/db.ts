@@ -3,13 +3,34 @@ import { open, Database } from "sqlite";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import type { ApplicationDatabase, DatabasePool } from "./databaseTypes.js";
+import { createPostgresPool, PostgresDatabase, postgresTransaction } from "./postgresDatabase.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-let db: Database | null = null;
+let db: ApplicationDatabase | null = null;
+let postgresPool: DatabasePool | null = null;
 
-export async function initializeDatabase(): Promise<Database> {
+export async function initializeDatabase(options: { postgresPool?: DatabasePool } = {}): Promise<ApplicationDatabase> {
   if (db) return db;
+
+  const provider = options.postgresPool ? "postgres" : (process.env.DATABASE_PROVIDER || "sqlite").trim().toLowerCase();
+  if (provider !== "sqlite" && provider !== "postgres") throw new Error("DATABASE_PROVIDER must be sqlite or postgres.");
+  if (provider === "postgres") {
+    const pool = options.postgresPool || createPostgresPool();
+    try {
+      const database = new PostgresDatabase((sql, values) => pool.query(sql, values), () => pool.end());
+      await database.get("SELECT 1 AS connected");
+      let version;
+      try {
+        version = await database.get("SELECT version FROM public.typetiles_schema_migrations WHERE version = ?", "20261018000100");
+      } catch { throw new Error("Apply the Type Tiles initial migration in Supabase before starting the backend."); }
+      if (!version) throw new Error("Apply the Type Tiles initial migration in Supabase before starting the backend.");
+      postgresPool = pool;
+      db = database;
+      return database;
+    } catch (error) { await pool.end(); throw error; }
+  }
 
   const dbPath = process.env.DATABASE_PATH || path.join(__dirname, "..", "data", "typetiles.db");
 
@@ -19,18 +40,19 @@ export async function initializeDatabase(): Promise<Database> {
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  db = await open({
+  const database = await open({
     filename: dbPath,
     driver: sqlite3.Database,
   });
 
-  await db.exec("PRAGMA foreign_keys = ON");
-  await db.exec("PRAGMA busy_timeout = 5000");
-  await db.exec("PRAGMA journal_mode = WAL");
+  await database.exec("PRAGMA foreign_keys = ON");
+  await database.exec("PRAGMA busy_timeout = 5000");
+  await database.exec("PRAGMA journal_mode = WAL");
 
   // Create tables
-  await createTables(db);
+  await createTables(database);
 
+  db = database;
   return db;
 }
 
@@ -223,7 +245,7 @@ async function createTables(db: Database) {
   console.log("✓ Database tables initialized");
 }
 
-export function getDatabase(): Database {
+export function getDatabase(): ApplicationDatabase {
   if (!db) {
     throw new Error("Database not initialized. Call initializeDatabase() first.");
   }
@@ -234,5 +256,23 @@ export async function closeDatabase() {
   if (db) {
     await db.close();
     db = null;
+    postgresPool = null;
   }
+}
+
+// A dedicated connection/client owns every authentication transaction.
+export async function databaseTransaction<T>(work: (database: ApplicationDatabase) => Promise<T>): Promise<T> {
+  const database = getDatabase();
+  if (postgresPool) return postgresTransaction(postgresPool, work);
+  const file = await database.get<{ file: string }>("SELECT file FROM pragma_database_list WHERE name = 'main'");
+  if (!file?.file) throw new Error("Authentication requires a file-backed SQLite database.");
+  const connection = await open({ filename: file.file, driver: sqlite3.Database });
+  try {
+    await connection.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; BEGIN IMMEDIATE");
+    try {
+      const result = await work(connection);
+      await connection.exec("COMMIT");
+      return result;
+    } catch (error) { await connection.exec("ROLLBACK"); throw error; }
+  } finally { await connection.close(); }
 }

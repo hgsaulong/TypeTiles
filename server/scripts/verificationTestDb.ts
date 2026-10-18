@@ -35,6 +35,8 @@ async function main() {
   if (!existsSync(dataDirectory)) throw new Error("Expected backend data directory is missing.");
   process.chdir(serverDirectory);
   config({ path: path.join(serverDirectory, ".env") });
+  // Never inherit the online provider from the regular .env in this SQLite tool.
+  process.env.DATABASE_PROVIDER = "sqlite";
   // Absolute Windows-safe path, configured in this process only. dotenv cannot replace it.
   process.env.DATABASE_PATH = testPath;
 

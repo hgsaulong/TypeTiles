@@ -15,6 +15,7 @@ import matchesRoutes from "../src/routes/matches.js";
 
 test("LAN results combine with sentence history and teacher ownership", { timeout: 30_000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), "typetiles-lan-results-"));
+  process.env.DATABASE_PROVIDER = "sqlite";
   process.env.DATABASE_PATH = join(directory, "test.db");
   process.env.JWT_SECRET = randomBytes(32).toString("hex");
   const db = await initializeDatabase();

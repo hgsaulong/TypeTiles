@@ -16,6 +16,7 @@ import { SENTENCE_BANK, getCategorySentences } from "../src/sentenceBank.js";
 
 test("sentence practice: additive migration, API validation and durable history", async () => {
   const directory = await mkdtemp(join(tmpdir(), "typetiles-sentences-"));
+  process.env.DATABASE_PROVIDER = "sqlite";
   process.env.DATABASE_PATH = join(directory, "test.db");
   process.env.JWT_SECRET = randomBytes(32).toString("hex");
   const legacy = await open({ filename: process.env.DATABASE_PATH, driver: sqlite3.Database });

@@ -58,7 +58,7 @@ router.get("/users", async (req: Request, res: Response) => {
     let params: any[] = [];
 
     if (search) {
-      query += ` WHERE username LIKE ? OR display_name LIKE ? OR email LIKE ?`;
+      query += ` WHERE lower(username) LIKE lower(?) OR lower(display_name) LIKE lower(?) OR lower(email) LIKE lower(?)`;
       const searchTerm = `%${search}%`;
       params = [searchTerm, searchTerm, searchTerm];
     }

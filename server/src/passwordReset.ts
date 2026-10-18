@@ -1,7 +1,6 @@
 import { createHmac, randomBytes, randomInt, timingSafeEqual } from "crypto";
-import sqlite3 from "sqlite3";
-import { open, type Database } from "sqlite";
-import { getDatabase } from "./db.js";
+import { databaseTransaction as transaction } from "./db.js";
+import type { ApplicationDatabase as Database } from "./databaseTypes.js";
 import { hashPassword } from "./auth.js";
 import { sendPasswordResetEmail } from "./email.js";
 import { sessionEvents } from "./sessionEvents.js";
@@ -34,25 +33,6 @@ function keyedHash(value: string): string {
 type User = { id: number; email: string; is_banned: number };
 type CodeRow = { id: number; code_hash: string; expires_at: number; attempts: number; consumed_at: number | null };
 
-// Dedicated connection: BEGIN/COMMIT must never capture writes on the application's shared connection.
-async function transaction<T>(work: (db: Database) => Promise<T>): Promise<T> {
-  const file = await getDatabase().get<{ file: string }>("SELECT file FROM pragma_database_list WHERE name = 'main'");
-  if (!file?.file) throw new Error("Password recovery requires a file-backed database.");
-  const db = await open({ filename: file.file, driver: sqlite3.Database });
-  try {
-    await db.exec("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000; BEGIN IMMEDIATE");
-    try {
-      const result = await work(db);
-      await db.exec("COMMIT");
-      return result;
-    } catch (error) {
-      await db.exec("ROLLBACK");
-      throw error;
-    }
-  } finally {
-    await db.close();
-  }
-}
 
 async function findUser(db: Database, email: string): Promise<User | null> {
   const users = await db.all<User[]>("SELECT id, email, is_banned FROM users WHERE lower(trim(email)) = ? LIMIT 2", email);

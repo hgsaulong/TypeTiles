@@ -20,6 +20,7 @@ import { attachLanServer } from "../src/lan.js";
 
 test("password recovery integration (isolated SQLite; mocked delivery)", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "type-tiles-auth-"));
+  process.env.DATABASE_PROVIDER = "sqlite";
   process.env.DATABASE_PATH = join(directory, "test.db");
   process.env.NODE_ENV = "test";
   process.env.JWT_SECRET = randomBytes(32).toString("hex");

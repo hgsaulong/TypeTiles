@@ -90,18 +90,26 @@ async function start() {
       console.log("\n💡 Tip: Make sure CLIENT_URL env matches your frontend URL\n");
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    const code = (error as { code?: string }).code;
+    console.error("Failed to start server. Check the environment; for PostgreSQL run npm run db:check.",
+      code && /^[A-Z0-9_]+$/.test(code) ? `(${code})` : "");
     process.exit(1);
   }
 }
 
-// Graceful shutdown
-process.on("SIGINT", async () => {
+// Render sends SIGTERM during deployments; support local Ctrl+C as well.
+let shuttingDown = false;
+async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
   console.log("\n⏸️  Shutting down...");
+  for (const socket of lanServer.clients) socket.close(1001, "Server shutting down");
   lanServer.close();
   httpServer.close();
   await closeDatabase();
   process.exit(0);
-});
+}
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
 
 start();

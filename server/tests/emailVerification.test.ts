@@ -20,6 +20,7 @@ import { attachLanServer } from "../src/lan.js";
 
 test("email verification integration: isolated SQLite and mocked delivery", { timeout: 60_000 }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "type-tiles-verification-"));
+  process.env.DATABASE_PROVIDER = "sqlite";
   process.env.DATABASE_PATH = join(directory, "test.db");
   process.env.NODE_ENV = "test";
   process.env.JWT_SECRET = randomBytes(32).toString("hex");
