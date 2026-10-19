@@ -6,7 +6,8 @@ import { normalizeRole, verifyToken, type AppRole } from "./auth.js";
 import { getDifficultyKey, getWordsForDifficulty, getWordCategory, WORD_BANK, type WordCategory } from "./wordBank.js";
 import { sessionEvents } from "./sessionEvents.js";
 
-const MAX_PLAYERS = 8;
+export const DEFAULT_MAX_STUDENTS = 50;
+const STANDINGS_INTERVAL_MS = 250;
 const COUNTDOWN_DELAY_MS = 3000;
 const SUPPORTED_ROUND_TIMES = [30, 60, 90] as const;
 const BACKGROUNDS = new Set(["blues", "volts", "office", "city"]);
@@ -73,6 +74,13 @@ type Room = {
   startAt?: number;
   classroomResultsSent: boolean;
   players: Map<string, Player>;
+  students: Map<number, Player>;
+  maxStudents: number;
+  participantWrites: Map<number, Promise<void>>;
+  standingsTimer?: NodeJS.Timeout;
+  deadlineTimer?: NodeJS.Timeout;
+  idleTimer?: NodeJS.Timeout;
+  finalization?: Promise<void>;
 };
 
 const rooms = new Map<string, Room>();
@@ -94,8 +102,16 @@ function roomState(room: Room) {
     matchConfig: room.matchConfig,
     startAt: room.startAt,
     started: room.started,
-    maxPlayers: MAX_PLAYERS,
-    players: [...room.players.values()].map(({ id, name, userId, ready, isHost }) => ({ id, name, userId, ready, isHost })),
+    maxPlayers: room.maxStudents + 1,
+    maxStudents: room.maxStudents,
+    studentCount: room.students.size,
+    players: [
+      ...[...room.players.values()].filter(player => player.isHost),
+      ...room.students.values(),
+    ].map(({ id, name, displayName, userId, ready, isHost, socket }) => ({
+      id, name, displayName, userId, ready, isHost,
+      connected: room.players.has(id) && socket.readyState === WebSocket.OPEN,
+    })),
   };
 }
 
@@ -106,16 +122,38 @@ function broadcast(room: Room) {
 
 function broadcastStandings(room: Room) {
   const players = getStudentResults(room);
-
+  const byUser = new Map(players.map(result => [result.userId, result]));
   for (const player of room.players.values()) {
-    send(player.socket, { type: "standings_update", players });
+    if (player.isHost) send(player.socket, { type: "standings_update", players, totalStudents: players.length });
+    else {
+      const standing = byUser.get(player.userId);
+      if (standing) send(player.socket, {
+        type: "rank_update", ...standing,
+        totalStudents: players.length, maxStudents: room.maxStudents,
+      });
+    }
   }
 }
 
+function queueStandings(room: Room) {
+  if (room.standingsTimer || room.classroomResultsSent) return;
+  room.standingsTimer = setTimeout(() => {
+    room.standingsTimer = undefined;
+    if (rooms.get(room.code) === room && !room.classroomResultsSent) broadcastStandings(room);
+  }, STANDINGS_INTERVAL_MS);
+  room.standingsTimer.unref();
+}
+
+type RankedMetric = { score: number; wpm: number; accuracy: number; joinOrder: number };
+export function compareClassroomResults(left: RankedMetric, right: RankedMetric): number {
+  return right.score - left.score || right.wpm - left.wpm
+    || right.accuracy - left.accuracy || left.joinOrder - right.joinOrder;
+}
+
 function getStudentResults(room: Room) {
-  return [...room.players.values()]
+  return [...room.students.values()]
     .filter((player) => player.role === "student" && player.userId !== undefined)
-    .map((player) => ({
+    .map((player, joinOrder) => ({
       userId: player.userId,
       username: player.name,
       displayName: player.displayName || player.name,
@@ -125,8 +163,11 @@ function getStudentResults(room: Room) {
       lives: player.performance?.lives ?? 3,
       completedWords: player.performance?.completedWords || 0,
       finished: player.performance?.finished || false,
+      connected: room.players.has(player.id) && player.socket.readyState === WebSocket.OPEN,
+      joinOrder,
     }))
-    .sort((left, right) => right.score - left.score || right.wpm - left.wpm || right.accuracy - left.accuracy);
+    .sort(compareClassroomResults)
+    .map((result, index) => ({ ...result, rank: index + 1 }));
 }
 
 async function persistClassroomResults(
@@ -174,13 +215,14 @@ async function getResultsForFinalization(
     `SELECT mp.user_id, mp.score, mp.wpm, mp.accuracy, mp.completed_words, mp.remaining_lives,
             mp.end_reason, u.username, u.display_name
      FROM match_participants mp JOIN users u ON u.id = mp.user_id
-     WHERE mp.match_id = ? AND mp.user_id <> ? AND u.role IN ('student', 'player')`,
+     WHERE mp.match_id = ? AND mp.user_id <> ? AND u.role IN ('student', 'player')
+     ORDER BY mp.id ASC`,
     [room.dbMatchId, room.ownerUserId],
   );
   const liveByUserId = new Map(liveResults.map((result) => [result.userId, result]));
 
   return savedParticipants
-    .map((participant) => {
+    .map((participant, joinOrder) => {
       const liveResult = liveByUserId.get(participant.user_id as number);
       return liveResult || {
         userId: participant.user_id as number,
@@ -192,9 +234,52 @@ async function getResultsForFinalization(
         lives: Number.isInteger(participant.remaining_lives) ? participant.remaining_lives : 3,
         completedWords: Number(participant.completed_words) || 0,
         finished: participant.end_reason !== null,
+        connected: false,
+        joinOrder,
+        rank: 0,
       };
     })
-    .sort((left, right) => right.score - left.score || right.wpm - left.wpm || right.accuracy - left.accuracy);
+    .sort(compareClassroomResults)
+    .map((result, index) => ({ ...result, rank: index + 1 }));
+}
+
+function clearRoomTimers(room: Room) {
+  clearTimeout(room.standingsTimer);
+  clearTimeout(room.deadlineTimer);
+  clearTimeout(room.idleTimer);
+}
+
+async function finalizeRoom(room: Room): Promise<void> {
+  if (room.classroomResultsSent) return;
+  if (room.finalization) return room.finalization;
+  room.finalization = (async () => {
+    const players = await getResultsForFinalization(room, getStudentResults(room));
+    await persistClassroomResults(room, players);
+    room.classroomResultsSent = true;
+    clearTimeout(room.standingsTimer);
+    clearTimeout(room.deadlineTimer);
+    broadcastStandings(room);
+    for (const participant of room.players.values()) {
+      send(participant.socket, { type: "classroom_results", roomCode: room.code, players });
+    }
+  })();
+  try { await room.finalization; }
+  catch (error) { room.finalization = undefined; throw error; }
+}
+
+function ensureParticipant(room: Room, userId: number): Promise<void> {
+  let pending = room.participantWrites.get(userId);
+  if (!pending) {
+    pending = (async () => {
+      const existing = await getDatabase().get(
+        "SELECT id FROM match_participants WHERE match_id = ? AND user_id = ?", room.dbMatchId, userId);
+      if (!existing) await getDatabase().run(
+        "INSERT INTO match_participants (match_id, user_id) VALUES (?, ?)", room.dbMatchId, userId);
+    })();
+    room.participantWrites.set(userId, pending);
+    void pending.catch(() => { if (room.participantWrites.get(userId) === pending) room.participantWrites.delete(userId); });
+  }
+  return pending;
 }
 
 function makeRoomCode() {
@@ -250,24 +335,41 @@ async function authenticatePlayer(token: string | undefined) {
   };
 }
 
-function leaveRoom(player: Player) {
+function leaveRoom(player: Player, releaseSlot = false) {
   for (const room of rooms.values()) {
     if (!room.players.delete(player.id)) continue;
 
-    if (room.players.size === 0) {
-      rooms.delete(room.code);
-    } else if (player.isHost) {
-      broadcast(room);
-    } else {
-      broadcast(room);
+    if (releaseSlot && !room.started && player.userId !== undefined
+      && room.students.get(player.userId) === player) {
+      room.students.delete(player.userId);
+      room.participantWrites.delete(player.userId);
+    }
+    broadcast(room);
+    if (room.started) queueStandings(room);
+    // Allow navigation/socket replacement without losing the room or roster.
+    // Empty rooms expire after a two-minute reconnect window.
+    if (room.players.size === 0 && !room.idleTimer) {
+      room.idleTimer = setTimeout(() => {
+        if (room.players.size === 0) {
+          clearRoomTimers(room);
+          rooms.delete(room.code);
+        }
+      }, 120_000);
+      room.idleTimer.unref();
     }
     return;
   }
 }
 
-export function attachLanServer(server: import("http").Server) {
+export function attachLanServer(server: import("http").Server,
+  options: { maxStudents?: number } = {}) {
+  const maxStudents = options.maxStudents ?? Number(process.env.LAN_MAX_STUDENTS || DEFAULT_MAX_STUDENTS);
+  if (!Number.isInteger(maxStudents) || maxStudents < 1 || maxStudents > 50) {
+    throw new Error("LAN_MAX_STUDENTS must be an integer between 1 and 50 (teacher excluded).");
+  }
   const webSocketServer = new WebSocketServer({ server, path: "/ws" });
   const connections = new Set<Player>();
+  const ownedRooms = new Set<Room>();
   const invalidate = (userId: number) => {
     for (const player of connections) {
       const payload = player.token ? verifyToken(player.token) : null;
@@ -294,6 +396,10 @@ export function attachLanServer(server: import("http").Server) {
   webSocketServer.on("close", () => {
     clearInterval(sweep);
     sessionEvents.off("invalidate", invalidate);
+    for (const room of ownedRooms) {
+      clearRoomTimers(room);
+      if (rooms.get(room.code) === room) rooms.delete(room.code);
+    }
   });
 
   webSocketServer.on("connection", (socket: WebSocket, request: IncomingMessage) => {
@@ -306,7 +412,9 @@ export function attachLanServer(server: import("http").Server) {
     };
     connections.add(player);
 
-    socket.on("message", async (raw) => {
+    let messageQueue = Promise.resolve();
+    socket.on("message", (raw) => {
+      messageQueue = messageQueue.then(async () => {
       let message: ClientMessage;
       try {
         message = JSON.parse(raw.toString()) as ClientMessage;
@@ -375,13 +483,14 @@ export function attachLanServer(server: import("http").Server) {
             matchConfig,
             classroomResultsSent: false,
             players: new Map([[player.id, player]]),
+            students: new Map(),
+            maxStudents,
+            participantWrites: new Map(),
           };
           if (!await authenticatePlayer(player.token) || socket.readyState !== WebSocket.OPEN) return;
           rooms.set(room.code, room);
-          await getDatabase().run(
-            "INSERT INTO match_participants (match_id, user_id) VALUES (?, ?)",
-            [room.dbMatchId, identity.userId],
-          );
+          ownedRooms.add(room);
+          await ensureParticipant(room, identity.userId);
           send(socket, { type: "room_created", roomCode: room.code, playerId: player.id });
           broadcast(room);
           return;
@@ -400,17 +509,40 @@ export function attachLanServer(server: import("http").Server) {
             return;
           }
 
+          if (rooms.get(room.code) !== room) {
+            send(socket, { type: "error", message: "Room not found. Check the room code." });
+            return;
+          }
+          const otherRoom = [...rooms.values()].find(candidate => candidate.players.has(player.id));
+          if ((otherRoom && otherRoom !== room) || (player.userId !== undefined && player.userId !== identity.userId)) {
+            send(socket, { type: "error", message: "Leave your current room before joining another account or room." });
+            return;
+          }
           const reconnectingHost = identity.userId === room.ownerUserId;
-          if (room.players.size >= MAX_PLAYERS && !reconnectingHost) {
-            send(socket, { type: "error", message: "This room is full (8 players maximum)." });
+          if (!reconnectingHost && identity.role !== "student") {
+            send(socket, { type: "error", code: "ROLE_NOT_ALLOWED", message: "Only students and this classroom's teacher can join." });
+            return;
+          }
+          const previousStudent = room.students.get(identity.userId);
+          // Reservation and replacement below are synchronous: concurrent joins
+          // cannot pass a stale count across a database await.
+          if (!reconnectingHost && !previousStudent && room.students.size >= room.maxStudents) {
+            send(socket, { type: "error", code: "ROOM_FULL", message: `This classroom is full (${room.maxStudents} students maximum; teacher separate).` });
+            return;
+          }
+          if (room.started && !reconnectingHost && !previousStudent) {
+            send(socket, { type: "error", code: "MATCH_STARTED", message: "This match has started. Only existing participants can reconnect." });
             return;
           }
 
-          let previousReady = false;
+          let previousReady = previousStudent?.ready ?? false;
+          let previousPerformance = previousStudent?.performance;
           for (const [playerId, existingPlayer] of room.players) {
             if (existingPlayer.userId !== identity.userId) continue;
             previousReady = existingPlayer.ready;
+            previousPerformance = existingPlayer.performance;
             room.players.delete(playerId);
+            if (existingPlayer !== player) existingPlayer.socket.close(4002, "Continued on another connection.");
             break;
           }
 
@@ -421,21 +553,22 @@ export function attachLanServer(server: import("http").Server) {
           player.role = identity.role;
           player.isHost = reconnectingHost;
           player.ready = previousReady;
+          player.performance = previousPerformance;
           room.players.set(player.id, player);
-          if (room.dbMatchId && player.userId) {
-            const participant = await getDatabase().get(
-              "SELECT id FROM match_participants WHERE match_id = ? AND user_id = ?",
-              [room.dbMatchId, player.userId],
-            );
-            if (!participant) {
-              await getDatabase().run(
-                "INSERT INTO match_participants (match_id, user_id) VALUES (?, ?)",
-                [room.dbMatchId, player.userId],
-              );
-            }
-          }
+          if (!reconnectingHost) room.students.set(identity.userId, player);
+          clearTimeout(room.idleTimer); room.idleTimer = undefined;
+          await ensureParticipant(room, identity.userId);
+          if (socket.readyState !== WebSocket.OPEN || room.players.get(player.id) !== player) return;
           send(socket, { type: "room_joined", roomCode: room.code, playerId: player.id });
           broadcast(room);
+          if (room.started) {
+            send(socket, { type: "room_started", roomCode: room.code,
+              matchConfig: room.matchConfig, wordSequence: room.wordSequence, startAt: room.startAt });
+            queueStandings(room);
+          }
+          if (room.classroomResultsSent) {
+            send(socket, { type: "classroom_results", roomCode: room.code, players: getStudentResults(room) });
+          }
           return;
         }
 
@@ -483,6 +616,8 @@ export function attachLanServer(server: import("http").Server) {
             send(participant.socket, { type: "room_cancelled", roomCode: room.code, message: "The teacher cancelled this classroom." });
           }
           rooms.delete(room.code);
+          clearRoomTimers(room);
+          ownedRooms.delete(room);
           for (const participant of room.players.values()) participant.socket.close();
         } else if (message.type === "leave_room") {
           if (player.isHost && room.started && room.dbMatchId) {
@@ -491,7 +626,10 @@ export function attachLanServer(server: import("http").Server) {
               await persistClassroomResults(room, results);
             }
           }
-          leaveRoom(player);
+          if (!room.started && !player.isHost && player.userId !== undefined) {
+            await getDatabase().run("DELETE FROM match_participants WHERE match_id = ? AND user_id = ?", room.dbMatchId, player.userId);
+          }
+          leaveRoom(player, true);
         } else if (message.type === "ready") {
           player.ready = true;
           broadcast(room);
@@ -500,7 +638,12 @@ export function attachLanServer(server: import("http").Server) {
             send(socket, { type: "error", message: "Only the host can start the game." });
             return;
           }
-          const participantsReady = [...room.players.values()].every((participant) => participant.isHost || participant.ready);
+          if (room.started) {
+            send(socket, { type: "error", code: "MATCH_STARTED", message: "This match has already started." });
+            return;
+          }
+          const participantsReady = room.students.size > 0 && [...room.students.values()].every(
+            participant => participant.ready && room.players.has(participant.id) && participant.socket.readyState === WebSocket.OPEN);
           if (!participantsReady) {
             send(socket, { type: "error", message: "All students must be ready before the teacher starts the session." });
             return;
@@ -513,6 +656,13 @@ export function attachLanServer(server: import("http").Server) {
           await persistRoomConfig(room);
           room.startAt = Date.now() + COUNTDOWN_DELAY_MS;
           room.wordSequence = createWordSequence(room.matchConfig);
+          room.deadlineTimer = setTimeout(() => {
+            void finalizeRoom(room).catch(() => {
+              for (const participant of room.players.values()) send(participant.socket,
+                { type: "error", code: "RESULT_SAVE_FAILED", message: "Results could not be saved. Keep the classroom open and retry the final update." });
+            });
+          }, COUNTDOWN_DELAY_MS + room.roundTime * 1000 + 1500);
+          room.deadlineTimer.unref();
           for (const participant of room.players.values()) {
             send(participant.socket, {
               type: "room_started",
@@ -523,8 +673,14 @@ export function attachLanServer(server: import("http").Server) {
             });
           }
           broadcast(room);
+          broadcastStandings(room);
         } else if (message.type === "score_update") {
           if (player.role !== "student" || !player.userId || !room.started) return;
+          if (room.classroomResultsSent || room.finalization) return;
+          if (player.performance?.finished) {
+            if ([...room.students.values()].every(student => student.performance?.finished)) await finalizeRoom(room);
+            return;
+          }
           if (message.roomCode && message.roomCode !== room.code) {
             send(socket, { type: "error", message: "Performance room does not match the active room." });
             return;
@@ -560,9 +716,9 @@ export function attachLanServer(server: import("http").Server) {
               ],
             );
           }
-          broadcastStandings(room);
+          queueStandings(room);
 
-          const students = [...room.players.values()].filter(
+          const students = [...room.students.values()].filter(
             (participant) => participant.role === "student" && participant.userId !== undefined,
           );
           if (
@@ -570,12 +726,7 @@ export function attachLanServer(server: import("http").Server) {
             students.length > 0 &&
             students.every((student) => student.performance?.finished === true)
           ) {
-            room.classroomResultsSent = true;
-            const players = await getResultsForFinalization(room, getStudentResults(room));
-            await persistClassroomResults(room, players);
-            for (const participant of room.players.values()) {
-              send(participant.socket, { type: "classroom_results", roomCode: room.code, players });
-            }
+            await finalizeRoom(room);
           }
         }
       } catch (error) {
@@ -584,6 +735,7 @@ export function attachLanServer(server: import("http").Server) {
       } finally {
         player.pendingToken = undefined;
       }
+      }).catch(() => send(socket, { type: "error", message: "The host could not process that request." }));
     });
 
     socket.on("close", () => {

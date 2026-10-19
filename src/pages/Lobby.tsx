@@ -3,6 +3,8 @@ import type { FormEvent } from "react";
 import { ArrowRight, Check, Copy, Users, Wifi } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import { ClassroomLeaderboard } from "../components/ClassroomLeaderboard";
+import type { ClassroomStanding } from "../lib/classroomTypes";
 import { PLAYER_TOKEN_KEY } from "../lib/playerApi";
 import { usePlayerAuth } from "../lib/PlayerAuthContext";
 import { WORD_CATEGORIES, type WordCategory } from "../words";
@@ -14,6 +16,8 @@ type Player = {
   userId?: number;
   ready: boolean;
   isHost: boolean;
+  connected?: boolean;
+  displayName?: string;
 };
 
 type ClassroomMatchConfig = {
@@ -28,25 +32,18 @@ type RoomState = {
   started: boolean;
   startAt?: number;
   maxPlayers: number;
+  maxStudents?: number;
+  studentCount?: number;
   players: Player[];
   matchConfig: ClassroomMatchConfig;
 };
 
-type Standing = {
-  userId: number;
-  username: string;
-  displayName: string;
-  score: number;
-  wpm: number;
-  accuracy: number;
-  lives: number;
-  completedWords: number;
-  finished: boolean;
-};
+type Standing = ClassroomStanding;
 
 type SocketMessage = RoomState & {
   type: string;
   message?: string;
+  code?: string;
   playerId?: string;
   matchConfig?: ClassroomMatchConfig;
   wordSequence?: string[];
@@ -222,7 +219,9 @@ export default function Lobby() {
 
       if (message.type === "error") {
         const text =
-          message.message || "Unable to connect to the room.";
+          message.code === "ROOM_FULL"
+            ? message.message || "This classroom is full. Ask the teacher for another room."
+            : message.message || "Unable to connect to the room.";
 
         if (text.includes("Room not found")) {
           setRoom(null);
@@ -541,6 +540,7 @@ export default function Lobby() {
    * Student -> Playing / Finished
    */
   const getPlayerStatus = (player: Player) => {
+    if (player.connected === false) return "Disconnected (slot reserved)";
     if (!room?.started) {
       if (player.isHost) {
         return "Host";
@@ -732,7 +732,7 @@ export default function Lobby() {
         </>
       ) : (
         <article className="rounded-[9px] bg-[#11163d] p-6 sm:p-8">
-          <div className="grid gap-8 lg:grid-cols-[1fr_555px]">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,1fr)]">
             {/* LEFT SIDE */}
             <div className="flex min-h-[380px] flex-col justify-between">
               <div>
@@ -959,110 +959,11 @@ export default function Lobby() {
   )}
 </div>
 
-              {/* TEACHER LIVE STANDINGS */}
+              {/* Rankings are ordered by the server; no client-side sorting. */}
               {classroomResults ? (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/70 p-3 text-xs text-white">
-                  <div className="mb-2 text-xs uppercase tracking-[0.25em] text-emerald-300">
-                    Classroom Results
-                  </div>
-
-                  <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 border-b border-white/10 pb-2 text-slate-400">
-                    <span>Rank</span>
-                    <span>Player</span>
-                    <span>Score</span>
-                    <span>WPM</span>
-                    <span>Accuracy</span>
-                    <span>Completed Words</span>
-                  </div>
-
-                  <div className="mt-2 space-y-2">
-                    {classroomResults.map((result, index) => (
-                      <div key={result.userId} className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3">
-                        <span>#{index + 1}</span>
-                        <span className="truncate">{result.displayName || result.username}</span>
-                        <span>{result.score}</span>
-                        <span>{result.wpm.toFixed(0)}</span>
-                        <span>{result.accuracy.toFixed(0)}%</span>
-                        <span>{result.completedWords}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : teacherMatchInProgress ||
-                matchInProgress ? (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/70 p-3 text-xs text-white">
-                  <div className="mb-2 text-xs uppercase tracking-[0.25em] text-emerald-300">
-                    Live Standings
-                  </div>
-
-                  <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-3 border-b border-white/10 pb-2 text-slate-400">
-                    <span>Player</span>
-                    <span>Score</span>
-                    <span>WPM</span>
-                    <span>Acc</span>
-                    <span>Lives</span>
-                    <span>Status</span>
-                  </div>
-
-                  <div className="mt-2 space-y-2">
-                    {standings.length ===
-                    0 ? (
-                      <div className="py-2 text-white/50">
-                        Waiting for student
-                        performance...
-                      </div>
-                    ) : (
-                      standings.map(
-                        (standing) => (
-                          <div
-                            key={
-                              standing.userId
-                            }
-                            className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-3"
-                          >
-                            <span className="truncate">
-                              {standing.displayName ||
-                                standing.username}
-                            </span>
-
-                            <span>
-                              {standing.score}
-                            </span>
-
-                            <span>
-                              {standing.wpm.toFixed(
-                                0
-                              )}
-                            </span>
-
-                            <span>
-                              {standing.accuracy.toFixed(
-                                0
-                              )}
-                              %
-                            </span>
-
-                            <span>
-                              {standing.lives}
-                            </span>
-
-                            <span
-                              className={
-                                standing.finished
-                                  ? "text-slate-400"
-                                  : "text-emerald-300"
-                              }
-                            >
-                              {standing.finished
-                                ? "Finished"
-                                : "Playing"}
-                            </span>
-                          </div>
-                        )
-                      )
-                    )}
-                  </div>
-                </div>
+                <ClassroomLeaderboard players={classroomResults} final />
+              ) : teacherMatchInProgress || matchInProgress ? (
+                <ClassroomLeaderboard players={standings} />
               ) : null}
             </div>
 
@@ -1096,16 +997,16 @@ export default function Lobby() {
               <div className="mt-3 overflow-hidden rounded-[8px] border border-[#2c6db2] bg-[#1c2451]">
                 <div className="border-b border-[#2c6db2] px-7 py-3">
                   <div className="font-semibold text-white">
-                    Connected Players
+                    Classroom Participants
                   </div>
 
                   <div className="text-xs text-white/75">
-                    {room.players.length}/
-                    {room.maxPlayers} players
-                    in the room
+                    {room.studentCount ?? room.players.filter(player => !player.isHost).length}/
+                    {room.maxStudents ?? room.maxPlayers - 1} students (teacher separate)
                   </div>
                 </div>
 
+                <div className="max-h-96 overflow-y-auto" tabIndex={0} role="region" aria-label="Classroom participants">
                 {room.players.map(
                   (player, index) => (
                     <div
@@ -1125,7 +1026,7 @@ export default function Lobby() {
 
                       <div>
                         <div className="text-sm font-semibold text-white">
-                          {player.name}
+                          {player.displayName || player.name}
 
                           {player.isHost
                             ? " (HOST)"
@@ -1141,6 +1042,7 @@ export default function Lobby() {
                     </div>
                   )
                 )}
+                </div>
               </div>
             </div>
           </div>

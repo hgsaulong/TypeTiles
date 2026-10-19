@@ -12,18 +12,9 @@ import {
 } from "../lib/playerApi";
 import { usePlayerAuth } from "../lib/PlayerAuthContext";
 import { getProfileBackground } from "../lib/profileAssets";
+import type { ClassroomRankUpdate, ClassroomStanding } from "../lib/classroomTypes";
 
-type ClassroomResult = {
-  userId: number;
-  username: string;
-  displayName: string;
-  score: number;
-  wpm: number;
-  accuracy: number;
-  lives: number;
-  completedWords: number;
-  finished: boolean;
-};
+type ClassroomResult = ClassroomStanding;
 
 type Props = {
   mode?: "solo" | "multiplayer";
@@ -60,6 +51,8 @@ export default function Game({
 
   const [classroomResults, setClassroomResults] =
     useState<ClassroomResult[] | null>(null);
+  const [liveRank, setLiveRank] = useState<ClassroomRankUpdate | null>(null);
+  const [classroomError, setClassroomError] = useState("");
 
   const currentUserRank = useMemo(() => {
     if (!classroomResults || user?.id === undefined) {
@@ -70,7 +63,7 @@ export default function Game({
       (result) => result.userId === user.id
     );
 
-    return index >= 0 ? index + 1 : null;
+    return index >= 0 ? classroomResults[index].rank ?? index + 1 : null;
   }, [classroomResults, user?.id]);
 
   useEffect(() => {
@@ -87,67 +80,100 @@ export default function Game({
       ""
     );
 
-    const socket = new WebSocket(
-      `ws://${cleanHost}/ws`
-    );
-
-    socketRef.current = socket;
-
-    socket.onopen = () => {
-      const token =
-        localStorage.getItem(PLAYER_TOKEN_KEY);
-
-      socket.send(
-        JSON.stringify({
-          type: "join_room",
-          roomCode,
-          token,
-        })
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let reconnectAttempts = 0;
+    const connect = () => {
+      const socket = new WebSocket(
+        `ws://${cleanHost}/ws`
       );
-    };
 
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data) as {
-        type?: string;
-        message?: string;
-        players?: ClassroomResult[];
+      socketRef.current = socket;
+
+      socket.onopen = () => {
+        const token =
+          localStorage.getItem(PLAYER_TOKEN_KEY);
+
+        socket.send(
+          JSON.stringify({
+            type: "join_room",
+            roomCode,
+            token,
+          })
+        );
       };
 
-      if (message.type === "room_joined") {
-        joinedRoomRef.current = true;
+      socket.onmessage = (event) => {
+        const message = JSON.parse(event.data) as {
+          type?: string;
+          message?: string;
+          players?: ClassroomResult[];
+          code?: string;
+        };
 
-        if (latestPerformanceRef.current) {
-          socket.send(
-            JSON.stringify({
-              type: "score_update",
-              roomCode,
-              ...latestPerformanceRef.current,
-            })
-          );
+        if (message.type === "rank_update") {
+          const rank = message as ClassroomRankUpdate;
+          if (rank.userId === user?.id) setLiveRank(rank);
         }
-      }
+        if (message.type === "error") setClassroomError(message.message || "Classroom connection error.");
 
-      if (
-        message.type === "room_cancelled" ||
-        message.type === "room_closed"
-      ) {
-        navigate("/app/lobby", {
-          replace: true,
-          state: {
-            message:
-              message.message ||
-              "The classroom is no longer available.",
-          },
-        });
-      }
+        if (message.type === "room_joined") {
+          joinedRoomRef.current = true;
+          reconnectAttempts = 0;
+          setClassroomError("");
 
-      if (message.type === "classroom_results") {
-        setClassroomResults(message.players || []);
-      }
+          if (latestPerformanceRef.current) {
+            socket.send(
+              JSON.stringify({
+                type: "score_update",
+                roomCode,
+                ...latestPerformanceRef.current,
+              })
+            );
+          }
+        }
+
+        if (
+          message.type === "room_cancelled" ||
+          message.type === "room_closed"
+        ) {
+          navigate("/app/lobby", {
+            replace: true,
+            state: {
+              message:
+                message.message ||
+                "The classroom is no longer available.",
+            },
+          });
+        }
+
+        if (message.type === "classroom_results") {
+          setClassroomResults(message.players || []);
+        }
+      };
+
+      socket.onclose = (event) => {
+        if (disposed || socketRef.current !== socket) return;
+        joinedRoomRef.current = false;
+        if (event.code === 4001 || event.code === 4002 || event.code === 1000) {
+          setClassroomError(event.reason || "Classroom connection closed. Return to the lobby to reconnect.");
+          return;
+        }
+        if (reconnectAttempts >= 10) {
+          setClassroomError("Connection lost. Return to the lobby to reconnect; your student slot is reserved.");
+          return;
+        }
+        reconnectAttempts++;
+        setClassroomError("Connection lost. Reconnecting; your student slot is reserved…");
+        reconnectTimer = setTimeout(connect, 1500);
+      };
     };
+    connect();
 
     return () => {
-      socket.close();
+      disposed = true;
+      clearTimeout(reconnectTimer);
+      socketRef.current?.close();
       socketRef.current = null;
       joinedRoomRef.current = false;
     };
@@ -156,6 +182,7 @@ export default function Game({
     mode,
     navigate,
     roomCode,
+    user?.id,
   ]);
 
   const handlePerformance = (
@@ -280,6 +307,19 @@ export default function Game({
 
   return (
     <section className="relative flex h-full min-h-0 flex-col">
+      {mode === "multiplayer" && !classroomResults ? (
+        <div className="mb-2 flex shrink-0 flex-wrap gap-x-4 gap-y-1 text-sm text-white" aria-label="Your live classroom rank">
+          <span className="font-semibold text-emerald-300">
+            Rank: {liveRank ? `#${liveRank.rank}/${liveRank.totalStudents}` : "Connecting…"}
+          </span>
+          {liveRank ? <>
+            <span>Score: {liveRank.score}</span>
+            <span>WPM: {liveRank.wpm.toFixed(0)}</span>
+            <span>Accuracy: {liveRank.accuracy.toFixed(0)}%</span>
+          </> : null}
+          {classroomError ? <span role="alert" className="text-red-300">{classroomError}</span> : null}
+        </div>
+      ) : null}
       {/* GAME AREA */}
       {!classroomResults ? (
         <div className="flex min-h-0 min-w-0 flex-1 gap-4">
@@ -306,7 +346,7 @@ export default function Game({
          * from stacking on top of each other.
          */
         <div className="flex min-h-0 flex-1 items-center justify-center">
-          <div className="w-full max-w-5xl rounded-2xl border border-emerald-400/40 bg-black/90 px-5 py-6 text-white shadow-xl sm:px-8">
+          <div className="max-h-full w-full max-w-5xl overflow-y-auto rounded-2xl border border-emerald-400/40 bg-black/90 px-5 py-6 text-white shadow-xl sm:px-8">
             <div className="text-center">
               <div className="text-xs uppercase tracking-[0.3em] text-emerald-300">
                 Classroom Results
@@ -327,7 +367,7 @@ export default function Game({
             </div>
 
             {/* RESULTS TABLE */}
-            <div className="mt-6 overflow-x-auto">
+            <div className="mt-6 max-h-[55vh] overflow-auto">
               <table className="w-full min-w-[720px] border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-slate-400">
@@ -369,11 +409,11 @@ export default function Game({
                           className={`border-b border-white/5 last:border-0 ${
                             isCurrentUser
                               ? "bg-emerald-400/10 text-emerald-300"
-                              : "text-white"
+                              : index < 3 ? "bg-amber-300/10 text-amber-100" : "text-white"
                           }`}
                         >
                           <td className="px-3 py-4 font-semibold">
-                            #{index + 1}
+                            #{result.rank ?? index + 1}
                           </td>
 
                           <td className="px-3 py-4 font-medium">
